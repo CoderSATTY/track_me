@@ -14,6 +14,19 @@ if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
   });
 }
 
+// Action click fallback
+if (chrome.action && chrome.action.onClicked) {
+  chrome.action.onClicked.addListener(async (tab) => {
+    if (chrome.sidePanel && chrome.sidePanel.open) {
+      try {
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+      } catch (err) {
+        console.warn('[TrackMe] Failed to open side panel:', err);
+      }
+    }
+  });
+}
+
 // Extension installed listener
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[TrackMe] Extension initialized.');

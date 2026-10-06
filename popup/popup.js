@@ -531,13 +531,39 @@ function setupEventListeners() {
         showToast('Attach error: ' + (res?.error || chrome.runtime.lastError?.message || 'No file input found'), true);
         return;
       }
-      if (res.attached) {
+      if (res?.data?.attached || res?.attached) {
         showToast('Resume file attached successfully');
       } else {
         showToast('No resume file input found on this page', true);
       }
     });
   });
+
+  // Popout to permanent browser tab
+  const popoutBtn = document.getElementById('btn-popout-tab');
+  if (popoutBtn) {
+    popoutBtn.addEventListener('click', () => {
+      chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') });
+    });
+  }
+
+  // Dynamic Page Inspection across tab switches
+  if (chrome.tabs && chrome.tabs.onActivated) {
+    chrome.tabs.onActivated.addListener(async () => {
+      await inspectActivePage();
+    });
+  }
+
+  if (chrome.tabs && chrome.tabs.onUpdated) {
+    chrome.tabs.onUpdated.addListener(async (tabId, changeInfo) => {
+      if (changeInfo.status === 'complete') {
+        const [current] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (current && current.id === tabId) {
+          await inspectActivePage();
+        }
+      }
+    });
+  }
 }
 
 function fileToBase64(file) {

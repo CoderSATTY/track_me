@@ -2,13 +2,12 @@
   "manifest_version": 3,
   "name": "TrackMe: Personalized AI Application Auto-Fill",
   "version": "1.0.0",
-  "description": "Memorizes your profile, resume, and personal answers. Auto-fills job applications, attaches resume files, and audits cover letter role-fit.",
+  "description": "Memorizes your profile, resume, and personal answers. Auto-fills job applications with LLM assistance.",
   "permissions": [
     "storage",
     "unlimitedStorage",
     "activeTab",
-    "scripting",
-    "sidePanel"
+    "scripting"
   ],
   "host_permissions": [
     "https://generativelanguage.googleapis.com/*",
@@ -21,17 +20,15 @@
     "type": "module"
   },
   "action": {
+    "default_popup": "popup/popup.html",
     "default_title": "TrackMe"
-  },
-  "side_panel": {
-    "default_path": "popup/popup.html"
   },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
       "js": ["content/content.js"],
       "css": ["content/content.css"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "icons": {

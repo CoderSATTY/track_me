@@ -9,11 +9,25 @@
 (function () {
   // Proactively eradicate any legacy floating widget if present from previous injections
   function removeLegacyWidgets() {
-    const legacy = document.querySelectorAll('#trackme-widget-root, #trackme-pill, #trackme-panel, .trackme-widget-container, #trackme-modal-audit');
-    legacy.forEach(el => el.remove());
+    const legacy = document.querySelectorAll(
+      '#trackme-widget-root, #trackme-pill, #trackme-panel, .trackme-widget-container, #trackme-modal-audit, [id^="trackme-widget"], [id^="trackme-pill"], [id^="trackme-panel"]'
+    );
+    legacy.forEach(el => {
+      if (el.id !== 'trackme-inline-tooltip') el.remove();
+    });
   }
 
   removeLegacyWidgets();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', removeLegacyWidgets);
+  }
+  const cleanTimer = setInterval(removeLegacyWidgets, 400);
+  setTimeout(() => clearInterval(cleanTimer), 10000);
+
+  try {
+    const cleanObserver = new MutationObserver(() => removeLegacyWidgets());
+    cleanObserver.observe(document.documentElement, { childList: true, subtree: true });
+  } catch {}
 
   if (window.__trackMeInjected) return;
   window.__trackMeInjected = true;
@@ -75,8 +89,9 @@
 
         for (const [trackmeId, value] of Object.entries(fillMap)) {
           const el = document.querySelector(`[data-trackme-id="${CSS.escape(trackmeId)}"]`);
-          if (el) {
-            const success = fillElement(el, value);
+          const block = document.querySelector(`[data-trackme-block-id="${CSS.escape(trackmeId)}"]`);
+          if (el || block) {
+            const success = fillElement(el, value, block);
             if (success) filledCount++;
           }
         }
@@ -117,6 +132,7 @@
           trackmeId = `tm_gform_${++counter}`;
           inputEl.setAttribute('data-trackme-id', trackmeId);
         }
+        block.setAttribute('data-trackme-block-id', trackmeId);
 
         // Collect choices if radio/checkbox/dropdown
         const options = [];
@@ -220,9 +236,45 @@
   }
 
   // --- ELEMENT FILLER WITH REACT & CLOSURE SUPPORT ---
-  function fillElement(el, value) {
+  function fillElement(el, value, block = null) {
     if (value === undefined || value === null) return false;
-    const tagName = el.tagName.toLowerCase();
+
+    // Check if question container has radio buttons (Google Forms)
+    const container = block || el?.closest?.('[role="listitem"], .geS5n, .Qr7Oae');
+    if (container) {
+      const radios = container.querySelectorAll('[role="radio"]');
+      if (radios.length > 0) {
+        const targetStr = String(value).toLowerCase().trim();
+        for (const r of radios) {
+          const valAttr = (r.getAttribute('data-value') || r.innerText || '').toLowerCase().trim();
+          if (valAttr === targetStr || valAttr.includes(targetStr) || targetStr.includes(valAttr)) {
+            r.click();
+            r.dispatchEvent(new Event('click', { bubbles: true }));
+            markFilled(r);
+            return true;
+          }
+        }
+      }
+
+      const checkboxes = container.querySelectorAll('[role="checkbox"]');
+      if (checkboxes.length > 1) {
+        const targetStr = String(value).toLowerCase().trim();
+        for (const cb of checkboxes) {
+          const valAttr = (cb.getAttribute('data-value') || cb.innerText || '').toLowerCase().trim();
+          if (valAttr === targetStr || valAttr.includes(targetStr) || targetStr.includes(valAttr)) {
+            if (cb.getAttribute('aria-checked') !== 'true') {
+              cb.click();
+              cb.dispatchEvent(new Event('click', { bubbles: true }));
+            }
+            markFilled(cb);
+            return true;
+          }
+        }
+      }
+    }
+
+    if (!el) return false;
+    const tagName = (el.tagName || '').toLowerCase();
     const type = (el.type || '').toLowerCase();
     const role = (el.getAttribute('role') || '').toLowerCase();
 
@@ -289,6 +341,7 @@
 
     // Dispatch full input event sequence
     el.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, cancelable: true, data: String(value) }));
     el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
     el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' }));
     el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, key: ' ' }));

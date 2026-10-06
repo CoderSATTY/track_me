@@ -1,5 +1,27 @@
 /* TrackMe Content Script - Minimalist Black & White Styles */
 
+/* Aggressively suppress and hide any legacy widgets or floating tabs on all pages */
+#trackme-widget-root,
+#trackme-pill,
+#trackme-panel,
+.trackme-widget,
+.trackme-modal,
+#trackme-modal-audit,
+[id^="trackme-widget"],
+[id^="trackme-pill"],
+[id^="trackme-panel"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  position: absolute !important;
+  left: -99999px !important;
+  top: -99999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  z-index: -9999 !important;
+}
+
 /* In-place Field Refactoring Highlight */
 .trackme-field-refactoring {
   outline: 2px solid #000000 !important;

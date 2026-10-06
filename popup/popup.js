@@ -48,6 +48,21 @@ async function initApp() {
     if (rawEl && !rawEl.value) rawEl.value = profile.resumeRawText;
   }
 
+  // Eradicate any legacy floating widget on the active form tab immediately
+  try {
+    const targetTab = await getTargetTab();
+    if (targetTab?.id && !targetTab.url?.startsWith('chrome://') && !targetTab.url?.startsWith('chrome-extension://')) {
+      chrome.scripting.executeScript({
+        target: { tabId: targetTab.id },
+        func: () => {
+          document.querySelectorAll('#trackme-widget-root, #trackme-pill, #trackme-panel, .trackme-widget, [id^="trackme-"]').forEach(el => {
+            if (el.id !== 'trackme-inline-tooltip') el.remove();
+          });
+        }
+      }).catch(() => {});
+    }
+  } catch {}
+
   await inspectActivePage();
 }
 
@@ -320,8 +335,31 @@ function populateDashboard(profile, activeProvider) {
   if (jsonDisplay) jsonDisplay.innerText = JSON.stringify(profile, null, 2);
 }
 
+async function getTargetTab() {
+  try {
+    const lastFocused = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (lastFocused.length > 0 && lastFocused[0]?.url && !lastFocused[0].url.startsWith('chrome://') && !lastFocused[0].url.startsWith('chrome-extension://')) {
+      return lastFocused[0];
+    }
+
+    const allActive = await chrome.tabs.query({ active: true });
+    const normalActive = allActive.filter(t => t.url && !t.url.startsWith('chrome://') && !t.url.startsWith('chrome-extension://'));
+    if (normalActive.length > 0) return normalActive[0];
+
+    const allTabs = await chrome.tabs.query({});
+    const formTab = allTabs.find(t => t.url && t.url.includes('docs.google.com/forms'));
+    if (formTab) return formTab;
+
+    const webTab = allTabs.find(t => t.url && t.url.startsWith('http'));
+    if (webTab) return webTab;
+  } catch (err) {
+    console.warn('[TrackMe] getTargetTab error:', err);
+  }
+  return null;
+}
+
 async function inspectActivePage() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = await getTargetTab();
   if (!tab || !tab.id || tab.url?.startsWith('chrome://')) return;
 
   chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_INFO' }, (res) => {
@@ -340,9 +378,28 @@ async function inspectActivePage() {
 
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
-  // Popout full browser tab
-  document.getElementById('btn-popout-tab')?.addEventListener('click', () => {
-    chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') });
+  const isWindowMode = window.location.search.includes('mode=window');
+  const floatBtn = document.getElementById('btn-float-window');
+
+  if (isWindowMode && floatBtn) {
+    document.body.classList.add('window-mode');
+    floatBtn.innerText = 'Persistent';
+    floatBtn.title = 'TrackMe is running in persistent floating window mode';
+  }
+
+  // Float persistent window
+  floatBtn?.addEventListener('click', async () => {
+    if (isWindowMode) return;
+    await chrome.windows.create({
+      url: chrome.runtime.getURL('popup/popup.html?mode=window'),
+      type: 'popup',
+      width: 385,
+      height: 600,
+      top: 60,
+      left: Math.max(0, (window.screen.availWidth || 1280) - 400),
+      focused: true
+    });
+    window.close();
   });
 
   // Stage 1: Keys
@@ -374,7 +431,7 @@ function setupEventListeners() {
     if (statusMsg) statusMsg.innerText = 'Scraping form questions and consulting AI model...';
     showToast('Filling application with AI...');
 
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    const tab = await getTargetTab();
     if (!tab?.id) {
       showToast('No active tab detected', true);
       if (statusMsg) statusMsg.innerText = 'Error: No active tab found.';

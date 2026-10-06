@@ -7,29 +7,32 @@ import { Storage } from '../lib/storage.js';
 import { LLMRouter } from '../lib/llm-router.js';
 import { ResumeParser } from '../lib/resume-parser.js';
 
-// Configure side panel to open on action icon click
-if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
-  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((err) => {
-    console.warn('[TrackMe] Side panel behavior set error:', err);
-  });
-}
-
-// Action click fallback
-if (chrome.action && chrome.action.onClicked) {
-  chrome.action.onClicked.addListener(async (tab) => {
-    if (chrome.sidePanel && chrome.sidePanel.open) {
-      try {
-        await chrome.sidePanel.open({ windowId: tab.windowId });
-      } catch (err) {
-        console.warn('[TrackMe] Failed to open side panel:', err);
+// Cleanup any legacy floating widgets across all open tabs
+function cleanupLegacyWidgetsOnAllTabs() {
+  chrome.tabs.query({}, (tabs) => {
+    for (const tab of tabs) {
+      if (tab.id && tab.url && !tab.url.startsWith('chrome://')) {
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            document.querySelectorAll('#trackme-widget-root, #trackme-pill, #trackme-panel, .trackme-widget, [id^="trackme-"]').forEach(el => {
+              if (el.id !== 'trackme-inline-tooltip') el.remove();
+            });
+          }
+        }).catch(() => {});
       }
     }
   });
 }
 
-// Extension installed listener
+// Extension installed & startup listeners
 chrome.runtime.onInstalled.addListener(() => {
+  cleanupLegacyWidgetsOnAllTabs();
   console.log('[TrackMe] Extension initialized.');
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  cleanupLegacyWidgetsOnAllTabs();
 });
 
 // Central Message Dispatcher

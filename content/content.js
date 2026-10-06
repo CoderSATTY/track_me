@@ -29,9 +29,9 @@
       <div id="trackme-panel" class="trackme-hidden">
         <div class="trackme-panel-header">
           <div class="trackme-panel-title">
-            <strong>TrackMe</strong> <span class="trackme-version">AI Assistant</span>
+            <strong>TrackMe</strong> <span class="trackme-version">Assistant</span>
           </div>
-          <button id="trackme-panel-close">✕</button>
+          <button id="trackme-panel-close">X</button>
         </div>
 
         <div class="trackme-panel-body">
@@ -41,31 +41,23 @@
 
           <div class="trackme-actions-grid">
             <button id="trackme-btn-autofill" class="trackme-btn trackme-btn-primary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
               Auto-Fill Application
             </button>
 
             <button id="trackme-btn-attach-resume" class="trackme-btn trackme-btn-secondary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
               Attach Resume File
             </button>
 
             <button id="trackme-btn-audit-cl" class="trackme-btn trackme-btn-secondary">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
               Audit Cover Letter Fit
             </button>
 
             <button id="trackme-btn-learn" class="trackme-btn trackme-btn-outline">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
               Save Manual Answers
             </button>
           </div>
 
           <div id="trackme-status-log" class="trackme-status-log">Ready</div>
-        </div>
-
-        <div class="trackme-panel-footer">
-          <a id="trackme-link-options" href="#">⚙️ Open Dashboard</a>
         </div>
       </div>
 
@@ -74,7 +66,7 @@
         <div class="trackme-modal-card">
           <div class="trackme-modal-header">
             <h3>Cover Letter & Role-Fit Audit</h3>
-            <button id="trackme-modal-close">✕</button>
+            <button id="trackme-modal-close">X</button>
           </div>
           <div id="trackme-audit-content" class="trackme-modal-body">
             <div class="trackme-spinner"></div> Analyzing role alignment...
@@ -283,7 +275,7 @@
 
           <div class="trackme-audit-section">
             <h5>Matching Strengths</h5>
-            <ul>${(audit.matchingStrengths || []).map(s => `<li>✅ ${s}</li>`).join('')}</ul>
+            <ul>${(audit.matchingStrengths || []).map(s => `<li>${s}</li>`).join('')}</ul>
           </div>
 
           <div class="trackme-audit-section">
@@ -293,7 +285,7 @@
 
           <div class="trackme-audit-section">
             <h5>Recommendations</h5>
-            <ul>${(audit.recommendations || []).map(r => `<li>💡 ${r}</li>`).join('')}</ul>
+            <ul>${(audit.recommendations || []).map(r => `<li>${r}</li>`).join('')}</ul>
           </div>
 
           ${audit.tailoredHookSnippet ? `
@@ -525,9 +517,9 @@
       const currentAnswer = target.value || '';
       const jobMetadata = extractJobMetadata();
 
-      // Visual feedback: shimmer border + inline badge
+      // Visual feedback: border highlight + inline badge
       target.classList.add('trackme-field-refactoring');
-      showInlineFeedback(target, `✨ Refactoring answer with AI (Variation #${iteration})...`);
+      showInlineFeedback(target, `Refactoring answer (Variation #${iteration})...`);
 
       chrome.runtime.sendMessage({
         type: 'REGENERATE_FIELD_ANSWER',
@@ -545,10 +537,10 @@
           fillElement(target, res.data.newAnswer);
           showInlineFeedback(
             target,
-            `✨ Refactored via ${res.data.providerUsed?.toUpperCase()}! (Double-click again to cycle)`
+            `Refactored via ${res.data.providerUsed?.toUpperCase()}. Double-click to cycle.`
           );
         } else {
-          showInlineFeedback(target, `❌ ${res?.error || 'Refactor failed'}`, true);
+          showInlineFeedback(target, `Error: ${res?.error || 'Refactor failed'}`, true);
         }
       });
     });

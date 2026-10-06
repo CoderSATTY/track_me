@@ -7,104 +7,299 @@
 </head>
 <body>
   <div class="popup-container">
-    <!-- Header -->
+    <!-- Top Bar -->
     <header class="popup-header">
       <div class="brand">
-        <div class="logo-icon">TM</div>
-        <div>
-          <h2>TrackMe</h2>
-          <span class="subtext">Application Autofill Assistant</span>
-        </div>
+        <span class="brand-title">TrackMe</span>
+        <span class="brand-sub">AI Application Assistant</span>
       </div>
-      <button id="btn-open-settings" class="icon-btn" title="Open Full Dashboard">⚙️</button>
+      <div id="badge-verified" class="status-tag status-unverified">Unverified</div>
     </header>
 
-    <!-- Profile Status -->
-    <section class="card profile-card">
-      <div class="profile-info">
-        <div class="avatar" id="avatar-initials">TM</div>
-        <div class="details">
-          <div class="name-row">
-            <span id="user-name" class="candidate-name">Loading...</span>
-            <span id="badge-verified" class="badge">Unverified</span>
+    <!-- Navigation Bar (Text Only, No Emojis) -->
+    <nav class="popup-nav">
+      <button class="nav-tab active" data-tab="tab-actions">Actions</button>
+      <button class="nav-tab" data-tab="tab-keys">API Keys</button>
+      <button class="nav-tab" data-tab="tab-resume">Resume</button>
+      <button class="nav-tab" data-tab="tab-demographics">Demographics</button>
+      <button class="nav-tab" data-tab="tab-memory">Memory</button>
+      <button class="nav-tab" data-tab="tab-cover-letter">Cover Letter</button>
+    </nav>
+
+    <!-- TAB 1: ACTIONS & QUICK STATUS -->
+    <section id="tab-actions" class="tab-content active">
+      <div class="card">
+        <div class="meta-row">
+          <span class="meta-label">Candidate</span>
+          <span id="stat-candidate-name" class="meta-value">Setup Required</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Stored Resume</span>
+          <span id="stat-resume-file" class="meta-value">None</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Memory Items</span>
+          <span id="stat-memory-count" class="meta-value">0</span>
+        </div>
+      </div>
+
+      <div class="form-group mt-2">
+        <label for="select-active-provider" class="form-label">Active Inference Engine</label>
+        <select id="select-active-provider" class="form-select">
+          <option value="gemini">Google Gemini (gemini-3.8-flash)</option>
+          <option value="groq">Groq (Llama 3.3 70B)</option>
+          <option value="cerebras">Cerebras (Llama 3.3 70B)</option>
+        </select>
+      </div>
+
+      <div class="actions-stack mt-3">
+        <button id="btn-autofill-page" class="btn btn-primary">Auto-Fill Current Page</button>
+        <div class="btn-grid">
+          <button id="btn-attach-resume" class="btn btn-secondary">Attach Resume</button>
+          <button id="btn-audit-fit" class="btn btn-secondary">Audit Fit</button>
+        </div>
+      </div>
+
+      <div class="help-box mt-3">
+        Double-click any answer field on a form to refactor its text in-place.
+      </div>
+    </section>
+
+    <!-- TAB 2: API KEYS -->
+    <section id="tab-keys" class="tab-content">
+      <div class="form-group">
+        <label for="primary-provider-select" class="form-label">Primary Engine</label>
+        <select id="primary-provider-select" class="form-select">
+          <option value="gemini">Google Gemini (gemini-3.8-flash)</option>
+          <option value="groq">Groq (Llama 3.3 70B)</option>
+          <option value="cerebras">Cerebras (Llama 3.3 70B)</option>
+        </select>
+      </div>
+
+      <div class="key-card card mt-2">
+        <div class="key-header">
+          <span class="key-name">Google Gemini (gemini-3.8-flash)</span>
+          <span id="test-gemini" class="test-indicator"></span>
+        </div>
+        <div class="key-input-row">
+          <input type="password" id="key-gemini" class="form-input" placeholder="AIzaSy...">
+          <button class="btn btn-sm btn-secondary btn-test-key" data-provider="gemini">Test</button>
+        </div>
+      </div>
+
+      <div class="key-card card mt-2">
+        <div class="key-header">
+          <span class="key-name">Groq (Llama 3.3 70B)</span>
+          <span id="test-groq" class="test-indicator"></span>
+        </div>
+        <div class="key-input-row">
+          <input type="password" id="key-groq" class="form-input" placeholder="gsk_...">
+          <button class="btn btn-sm btn-secondary btn-test-key" data-provider="groq">Test</button>
+        </div>
+      </div>
+
+      <div class="key-card card mt-2">
+        <div class="key-header">
+          <span class="key-name">Cerebras (Llama 3.3 70B)</span>
+          <span id="test-cerebras" class="test-indicator"></span>
+        </div>
+        <div class="key-input-row">
+          <input type="password" id="key-cerebras" class="form-input" placeholder="csk-...">
+          <button class="btn btn-sm btn-secondary btn-test-key" data-provider="cerebras">Test</button>
+        </div>
+      </div>
+
+      <div class="btn-grid mt-3">
+        <input type="file" id="upload-keys-file" accept=".env,.json,.txt" style="display: none;">
+        <button id="btn-upload-keys" class="btn btn-secondary">Import from .env / JSON</button>
+        <button id="btn-save-keys" class="btn btn-primary">Save Key Settings</button>
+      </div>
+    </section>
+
+    <!-- TAB 3: RESUME & INTAKE -->
+    <section id="tab-resume" class="tab-content">
+      <div class="card">
+        <input type="file" id="resume-file-input" accept=".pdf,.txt,.docx,.md" style="display: none;">
+        <div class="dropzone-box" id="resume-dropzone">
+          <span class="dropzone-text">Click to browse or drop resume file</span>
+          <span class="dropzone-sub">PDF, TXT, DOCX</span>
+        </div>
+        <div id="resume-file-status" class="file-status-row hidden">
+          <span id="resume-file-name" class="file-name-text">resume.pdf</span>
+          <button id="btn-parse-resume" class="btn btn-sm btn-primary">Parse Profile</button>
+        </div>
+      </div>
+
+      <div id="parse-loading" class="parse-loader hidden">
+        Parsing resume data...
+      </div>
+
+      <!-- Verification Fields -->
+      <div id="verification-fields" class="mt-2">
+        <div class="section-heading">Verified Profile Details</div>
+        <div class="fields-grid">
+          <div class="form-group">
+            <label class="form-label">Full Name</label>
+            <input type="text" id="prof-fullName" class="form-input">
           </div>
-          <span id="user-headline" class="candidate-headline">Profile Active</span>
+          <div class="form-group">
+            <label class="form-label">Roll No / Student ID</label>
+            <input type="text" id="prof-rollNo" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" id="prof-email" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="tel" id="prof-phone" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">City, State</label>
+            <input type="text" id="prof-city" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Country, Postal Code</label>
+            <input type="text" id="prof-country" class="form-input">
+          </div>
+          <div class="form-group full-col">
+            <label class="form-label">LinkedIn URL</label>
+            <input type="url" id="prof-linkedin" class="form-input">
+          </div>
+          <div class="form-group full-col">
+            <label class="form-label">GitHub URL</label>
+            <input type="url" id="prof-github" class="form-input">
+          </div>
+          <div class="form-group full-col">
+            <label class="form-label">Skills (Comma-separated)</label>
+            <input type="text" id="prof-skills" class="form-input">
+          </div>
         </div>
+        <button id="btn-confirm-profile" class="btn btn-primary mt-3 full-btn">Confirm and Lock Profile</button>
+      </div>
+    </section>
+
+    <!-- TAB 4: DEMOGRAPHICS -->
+    <section id="tab-demographics" class="tab-content">
+      <div class="form-group">
+        <label class="form-label">Legally authorized to work in target country?</label>
+        <select id="demo-legallyAuthorized" class="form-select">
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
       </div>
 
-      <div class="meta-row">
-        <div class="meta-item">
-          <span class="meta-label">Resume</span>
-          <span id="resume-status" class="meta-value">None</span>
+      <div class="form-group mt-2">
+        <label class="form-label">Will you now or in future require visa sponsorship?</label>
+        <select id="demo-requireSponsorship" class="form-select">
+          <option value="No">No</option>
+          <option value="Yes">Yes</option>
+        </select>
+      </div>
+
+      <div class="form-group mt-2">
+        <label class="form-label">Sponsorship / Visa Details</label>
+        <input type="text" id="demo-sponsorshipDetails" class="form-input" placeholder="Optional details">
+      </div>
+
+      <div class="form-group mt-2">
+        <label class="form-label">Disability Status (ADA)</label>
+        <select id="demo-disabilityStatus" class="form-select">
+          <option value="No, I do not have a disability">No, I do not have a disability</option>
+          <option value="Yes, I have a disability">Yes, I have a disability</option>
+          <option value="I do not wish to answer">I do not wish to answer</option>
+        </select>
+      </div>
+
+      <div class="form-group mt-2">
+        <label class="form-label">Veteran Status</label>
+        <select id="demo-veteranStatus" class="form-select">
+          <option value="I am not a protected veteran">I am not a protected veteran</option>
+          <option value="I identify as a protected veteran">I identify as a protected veteran</option>
+          <option value="I do not wish to answer">I do not wish to answer</option>
+        </select>
+      </div>
+
+      <div class="form-group mt-2">
+        <label class="form-label">Gender Identity</label>
+        <select id="demo-gender" class="form-select">
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Non-Binary">Non-Binary</option>
+          <option value="Prefer not to disclose">Prefer not to disclose</option>
+        </select>
+      </div>
+
+      <div class="form-group mt-2">
+        <label class="form-label">Pronouns</label>
+        <select id="demo-pronouns" class="form-select">
+          <option value="He/Him">He / Him</option>
+          <option value="She/Her">She / Her</option>
+          <option value="They/Them">They / Them</option>
+          <option value="Prefer not to say">Prefer not to say</option>
+        </select>
+      </div>
+
+      <div class="form-group mt-2">
+        <label class="form-label">Expected Salary</label>
+        <input type="text" id="demo-salaryExpectation" class="form-input" placeholder="e.g. $100,000 / year or Negotiable">
+      </div>
+
+      <div class="form-group mt-2">
+        <label class="form-label">Notice Period</label>
+        <input type="text" id="demo-noticePeriod" class="form-input" placeholder="e.g. Immediate / 2 Weeks">
+      </div>
+
+      <button id="btn-save-demographics" class="btn btn-primary mt-3 full-btn">Save Demographic Answers</button>
+    </section>
+
+    <!-- TAB 5: MEMORY BANK -->
+    <section id="tab-memory" class="tab-content">
+      <div class="form-group">
+        <input type="text" id="memory-search-input" class="form-input" placeholder="Search saved answers...">
+      </div>
+
+      <div id="memory-items-list" class="memory-list-box mt-2">
+        <!-- Dynamically rendered memory items -->
+      </div>
+
+      <!-- Add New Memory Entry -->
+      <div class="card mt-2">
+        <div class="section-heading">Add Custom Answer</div>
+        <div class="form-group mt-1">
+          <input type="text" id="new-mem-question" class="form-input" placeholder="Question prompt">
         </div>
-        <div class="meta-item">
-          <span class="meta-label">Active Model</span>
-          <span id="current-provider-name" class="meta-value">Gemini</span>
+        <div class="form-group mt-1">
+          <textarea id="new-mem-answer" class="form-input" rows="2" placeholder="Your prepared answer"></textarea>
+        </div>
+        <button id="btn-save-new-memory" class="btn btn-secondary btn-sm mt-2 full-btn">Add to Memory Bank</button>
+      </div>
+    </section>
+
+    <!-- TAB 6: COVER LETTER & FIT AUDIT -->
+    <section id="tab-cover-letter" class="tab-content">
+      <div class="form-group">
+        <label class="form-label">Stored Cover Letter</label>
+        <textarea id="cl-active-text" class="form-input" rows="5" placeholder="Paste your default cover letter here..."></textarea>
+        <button id="btn-save-cl" class="btn btn-secondary btn-sm mt-1">Save Cover Letter</button>
+      </div>
+
+      <div class="card mt-2">
+        <div class="section-heading">Role Fit Audit (Current Page)</div>
+        <button id="btn-run-fit-audit" class="btn btn-primary mt-2 full-btn">Audit Fit with Current Tab</button>
+        <div id="cl-audit-results" class="mt-2 hidden">
+          <div class="score-display">
+            <span class="score-title">Fit Score:</span>
+            <span id="cl-score-num" class="score-value">0%</span>
+          </div>
+          <div id="cl-verdict-text" class="audit-verdict"></div>
+          <div id="cl-recommendations" class="audit-text mt-1"></div>
         </div>
       </div>
     </section>
 
-    <!-- Provider Selection -->
-    <section class="provider-section">
-      <label for="select-active-provider" class="section-label">Active Inference Engine</label>
-      <select id="select-active-provider" class="form-select">
-        <option value="gemini">Google Gemini Flash (Primary)</option>
-        <option value="groq">Groq Llama 3.3 (Fast)</option>
-        <option value="cerebras">Cerebras Llama 3.3</option>
-        <option value="openrouter">OpenRouter Free Tier</option>
-        <option value="sambanova">SambaNova Meta-Llama</option>
-        <option value="together">Together AI</option>
-        <option value="cloudflare">Cloudflare Workers AI</option>
-      </select>
-    </section>
-
-    <!-- Main Actions -->
-    <section class="actions-section">
-      <button id="btn-autofill-page" class="btn btn-primary">
-        Auto-Fill Current Page
-      </button>
-
-      <div class="btn-group">
-        <button id="btn-attach-resume" class="btn btn-secondary">Attach Resume</button>
-        <button id="btn-audit-fit" class="btn btn-secondary">Audit Fit</button>
-      </div>
-    </section>
-
-    <!-- Direct API Key Editor in Popup -->
-    <section class="api-keys-toggle-section">
-      <button id="btn-toggle-keys" class="btn btn-text">
-        <span>🔑 Change / Update API Keys</span>
-        <span id="keys-toggle-arrow">▼</span>
-      </button>
-
-      <div id="quick-keys-panel" class="quick-keys-panel hidden">
-        <div class="key-field">
-          <label>Google Gemini API Key</label>
-          <input type="password" id="popup-key-gemini" class="form-input" placeholder="AIzaSy...">
-        </div>
-        <div class="key-field">
-          <label>Groq API Key</label>
-          <input type="password" id="popup-key-groq" class="form-input" placeholder="gsk_...">
-        </div>
-        <div class="key-field">
-          <label>Cerebras API Key</label>
-          <input type="password" id="popup-key-cerebras" class="form-input" placeholder="csk-...">
-        </div>
-        <div class="key-field">
-          <label>OpenRouter API Key</label>
-          <input type="password" id="popup-key-openrouter" class="form-input" placeholder="sk-or-v1-...">
-        </div>
-        <button id="btn-save-popup-keys" class="btn btn-primary btn-sm mt-2">Save Keys</button>
-      </div>
-    </section>
-
-    <!-- Status Toast -->
+    <!-- Global Toast -->
     <div id="status-toast" class="status-toast hidden"></div>
-
-    <!-- Footer -->
-    <footer class="popup-footer">
-      <a href="#" id="link-dashboard">Open Full Dashboard (Resume & Q&A) →</a>
-    </footer>
   </div>
 
   <script type="module" src="popup.js"></script>

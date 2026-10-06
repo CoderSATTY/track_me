@@ -7,11 +7,9 @@ import { Storage } from '../lib/storage.js';
 import { LLMRouter } from '../lib/llm-router.js';
 import { ResumeParser } from '../lib/resume-parser.js';
 
-// Open onboarding/options tab on first install
-chrome.runtime.onInstalled.addListener((details) => {
-  if (details.reason === 'install') {
-    chrome.runtime.openOptionsPage();
-  }
+// Extension installed listener
+chrome.runtime.onInstalled.addListener(() => {
+  console.log('[TrackMe] Extension initialized.');
 });
 
 // Central Message Dispatcher

@@ -1,0 +1,389 @@
+/* TrackMe Content Script - Clean, Professional & Minimal UI */
+
+#trackme-widget-root {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 2147483647;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 13px;
+  color: #f1f5f9;
+}
+
+#trackme-widget-root * {
+  box-sizing: border-box;
+}
+
+/* Floating Pill - Clean, Flat, Minimalist */
+#trackme-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+#trackme-pill:hover {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.trackme-logo-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #2563eb;
+  border-radius: 4px;
+  color: #ffffff;
+}
+
+.trackme-pill-text {
+  font-weight: 600;
+  font-size: 12px;
+  color: #f8fafc;
+}
+
+#trackme-pill-toggle {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0 2px;
+}
+
+/* Panel Card */
+#trackme-panel {
+  position: absolute;
+  bottom: 42px;
+  right: 0;
+  width: 300px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.trackme-hidden {
+  display: none !important;
+}
+
+.trackme-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 8px;
+}
+
+.trackme-panel-title strong {
+  font-size: 13px;
+  color: #f8fafc;
+}
+
+.trackme-version {
+  font-size: 10px;
+  background: #1e293b;
+  color: #94a3b8;
+  padding: 2px 5px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 500;
+}
+
+#trackme-panel-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#trackme-panel-close:hover {
+  color: #ffffff;
+}
+
+.trackme-info-banner {
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trackme-actions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.trackme-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  border: 1px solid transparent;
+  outline: none;
+}
+
+.trackme-btn-primary {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #1d4ed8;
+}
+
+.trackme-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+.trackme-btn-secondary {
+  background: #1e293b;
+  color: #e2e8f0;
+  border-color: #334155;
+}
+
+.trackme-btn-secondary:hover {
+  background: #334155;
+}
+
+.trackme-btn-outline {
+  background: transparent;
+  color: #94a3b8;
+  border-color: #334155;
+}
+
+.trackme-btn-outline:hover {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+.trackme-status-log {
+  font-size: 11px;
+  color: #10b981;
+  text-align: center;
+  min-height: 16px;
+}
+
+.trackme-panel-footer {
+  text-align: center;
+  border-top: 1px solid #1e293b;
+  padding-top: 6px;
+}
+
+.trackme-panel-footer a {
+  color: #60a5fa;
+  text-decoration: none;
+  font-size: 11px;
+}
+
+.trackme-panel-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Modal */
+.trackme-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2147483647;
+}
+
+.trackme-modal-card {
+  width: 90%;
+  max-width: 480px;
+  max-height: 85vh;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  overflow-y: auto;
+  padding: 18px;
+}
+
+.trackme-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+}
+
+.trackme-modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+  color: #f8fafc;
+}
+
+#trackme-modal-close {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.trackme-audit-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 14px;
+}
+
+.trackme-score-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 6px;
+  background: #0f172a;
+  border: 1px solid #334155;
+}
+
+.trackme-score-num {
+  font-size: 16px;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.trackme-score-label {
+  font-size: 8px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.trackme-audit-details h4 {
+  margin: 0 0 2px 0;
+  color: #f8fafc;
+  font-size: 13px;
+}
+
+.trackme-audit-details p {
+  margin: 0;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.trackme-audit-section {
+  margin-bottom: 12px;
+}
+
+.trackme-audit-section h5 {
+  margin: 0 0 4px 0;
+  color: #94a3b8;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trackme-audit-section ul {
+  margin: 0;
+  padding-left: 16px;
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+
+.trackme-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trackme-chip {
+  background: #1e293b;
+  color: #f87171;
+  border: 1px solid #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.trackme-snippet {
+  margin: 0;
+  padding: 8px 10px;
+  background: #1e293b;
+  border-left: 3px solid #2563eb;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #e2e8f0;
+  line-height: 1.4;
+}
+
+.trackme-spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #334155;
+  border-top-color: #2563eb;
+  border-radius: 50%;
+  animation: trackmeSpin 0.8s linear infinite;
+}
+
+@keyframes trackmeSpin {
+  to { transform: rotate(360deg); }
+}
+
+/* Double-Click Clean Refactoring Outline */
+.trackme-field-refactoring {
+  outline: 2px solid #2563eb !important;
+  background-color: rgba(37, 99, 235, 0.05) !important;
+}
+
+/* Inline Floating Mini Tooltip */
+.trackme-inline-tooltip {
+  position: absolute;
+  z-index: 2147483647;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  color: #f1f5f9;
+  padding: 4px 8px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trackme-inline-tooltip.error {
+  border-color: #ef4444;
+  color: #f87171;
+}

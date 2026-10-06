@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment & Private Keys
+.env
+.env.local
+.env.*.local
+keys.json
+api_keys.json
+*.pem
+*.key
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs & Temporary files
+*.log
+tmp/
+temp/
+
+# Extension release bundles
+*.zip
+dist/
+build/

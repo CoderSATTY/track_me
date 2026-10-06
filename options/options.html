@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TrackMe — Personalized AI Profile & Application Engine</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div>
+          <h1 class="logo-title">TrackMe</h1>
+          <span class="logo-subtitle">Personal Application Hub</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-tab="tab-api-keys">
+          <span class="nav-icon">🔑</span>
+          <span>API Keys & Router</span>
+        </button>
+        <button class="nav-item" data-tab="tab-resume-intake">
+          <span class="nav-icon">📄</span>
+          <span>Resume & Final Run</span>
+        </button>
+        <button class="nav-item" data-tab="tab-demographics">
+          <span class="nav-icon">🛡️</span>
+          <span>Demographics & Q&A</span>
+        </button>
+        <button class="nav-item" data-tab="tab-memory-bank">
+          <span class="nav-icon">🧠</span>
+          <span>Memory Bank</span>
+        </button>
+        <button class="nav-item" data-tab="tab-cover-letters">
+          <span class="nav-icon">✍️</span>
+          <span>Cover Letter Audit</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="status-indicator">
+          <span class="dot-online"></span>
+          <span id="global-status-text">Ready</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main-content">
+      <!-- TAB 1: API KEYS & ROUTER -->
+      <section id="tab-api-keys" class="tab-pane active">
+        <header class="pane-header">
+          <div>
+            <h2>AI Model Providers & Routing Engine</h2>
+            <p class="pane-desc">Configure at least one free-tier API key. TrackMe cascades through providers if rate-limits or outages occur.</p>
+          </div>
+          <div class="flex-actions">
+            <input type="file" id="upload-keys-file" accept=".env,.json,.txt" style="display: none;">
+            <button id="btn-upload-keys" class="btn btn-outline">📁 Import from .env / JSON</button>
+            <button id="btn-save-keys" class="btn btn-primary">Save Key Settings</button>
+          </div>
+        </header>
+
+        <div class="router-config-bar card">
+          <div class="field-row">
+            <div class="field-col">
+              <label for="primary-provider-select">Primary Inference Engine</label>
+              <select id="primary-provider-select" class="form-input">
+                <option value="gemini">Google AI Studio / Gemini 2.5 Flash (Recommended)</option>
+                <option value="groq">Groq (Llama 3.3 70B - Ultra Low Latency)</option>
+                <option value="cerebras">Cerebras (Llama 3.3 70B - High Throughput)</option>
+                <option value="openrouter">OpenRouter Free Aggregator</option>
+                <option value="sambanova">SambaNova Meta-Llama 3.1 70B</option>
+                <option value="together">Together AI</option>
+                <option value="cloudflare">Cloudflare Workers AI</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="provider-cards-grid">
+          <!-- Gemini -->
+          <div class="provider-card card">
+            <div class="card-header">
+              <div class="provider-title">
+                <strong>Google AI Studio / Gemini API</strong>
+                <span class="badge badge-emerald">Best Overall Free Tier</span>
+              </div>
+              <span class="capacity-tag">High daily quota • Native PDF support</span>
+            </div>
+            <div class="card-body">
+              <input type="password" id="key-gemini" class="form-input" placeholder="AIzaSy..." autocomplete="off">
+              <div class="card-actions">
+                <button class="btn btn-sm btn-outline btn-test-key" data-provider="gemini">Test Connection</button>
+                <span class="test-result" id="test-gemini"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cerebras -->
+          <div class="provider-card card">
+            <div class="card-header">
+              <div class="provider-title">
+                <strong>Cerebras</strong>
+                <span class="badge badge-blue">Best Token Throughput</span>
+              </div>
+              <span class="capacity-tag">~1M tokens/day for open models</span>
+            </div>
+            <div class="card-body">
+              <input type="password" id="key-cerebras" class="form-input" placeholder="csk-..." autocomplete="off">
+              <div class="card-actions">
+                <button class="btn btn-sm btn-outline btn-test-key" data-provider="cerebras">Test Connection</button>
+                <span class="test-result" id="test-cerebras"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Groq -->
+          <div class="provider-card card">
+            <div class="card-header">
+              <div class="provider-title">
+                <strong>Groq</strong>
+                <span class="badge badge-amber">Best Latency (&lt;300ms)</span>
+              </div>
+              <span class="capacity-tag">~1,000 req/day on Llama 3.3 70B</span>
+            </div>
+            <div class="card-body">
+              <input type="password" id="key-groq" class="form-input" placeholder="gsk_..." autocomplete="off">
+              <div class="card-actions">
+                <button class="btn btn-sm btn-outline btn-test-key" data-provider="groq">Test Connection</button>
+                <span class="test-result" id="test-groq"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- OpenRouter -->
+          <div class="provider-card card">
+            <div class="card-header">
+              <div class="provider-title">
+                <strong>OpenRouter</strong>
+                <span class="badge badge-purple">Universal Fallback</span>
+              </div>
+              <span class="capacity-tag">50 req/day on free models aggregator</span>
+            </div>
+            <div class="card-body">
+              <input type="password" id="key-openrouter" class="form-input" placeholder="sk-or-v1-..." autocomplete="off">
+              <div class="card-actions">
+                <button class="btn btn-sm btn-outline btn-test-key" data-provider="openrouter">Test Connection</button>
+                <span class="test-result" id="test-openrouter"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- SambaNova -->
+          <div class="provider-card card">
+            <div class="card-header">
+              <div class="provider-title">
+                <strong>SambaNova</strong>
+                <span class="badge badge-slate">Large Open Models</span>
+              </div>
+              <span class="capacity-tag">Free developer tier inference</span>
+            </div>
+            <div class="card-body">
+              <input type="password" id="key-sambanova" class="form-input" placeholder="Enter SambaNova key" autocomplete="off">
+              <div class="card-actions">
+                <button class="btn btn-sm btn-outline btn-test-key" data-provider="sambanova">Test Connection</button>
+                <span class="test-result" id="test-sambanova"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Together AI -->
+          <div class="provider-card card">
+            <div class="card-header">
+              <div class="provider-title">
+                <strong>Together AI</strong>
+                <span class="badge badge-slate">Experimentation</span>
+              </div>
+              <span class="capacity-tag">Trial credits & open models</span>
+            </div>
+            <div class="card-body">
+              <input type="password" id="key-together" class="form-input" placeholder="Enter Together AI key" autocomplete="off">
+              <div class="card-actions">
+                <button class="btn btn-sm btn-outline btn-test-key" data-provider="together">Test Connection</button>
+                <span class="test-result" id="test-together"></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Cloudflare Workers AI -->
+          <div class="provider-card card">
+            <div class="card-header">
+              <div class="provider-title">
+                <strong>Cloudflare Workers AI</strong>
+                <span class="badge badge-slate">Edge Serverless</span>
+              </div>
+              <span class="capacity-tag">Free daily neuron allocation</span>
+            </div>
+            <div class="card-body">
+              <input type="password" id="key-cloudflare" class="form-input" placeholder="Cloudflare API Token" autocomplete="off">
+              <input type="text" id="extra-cf-account" class="form-input mt-2" placeholder="Account ID (Required for Cloudflare)">
+              <div class="card-actions">
+                <button class="btn btn-sm btn-outline btn-test-key" data-provider="cloudflare">Test Connection</button>
+                <span class="test-result" id="test-cloudflare"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 2: RESUME INTAKE & "FINAL RUN" VERIFICATION -->
+      <section id="tab-resume-intake" class="tab-pane">
+        <header class="pane-header">
+          <div>
+            <h2>Resume Intake & Verification Run</h2>
+            <p class="pane-desc">Upload your resume. TrackMe parses your details with the AI engine, then presents a <strong>Final Verification Run</strong> for you to inspect and confirm.</p>
+          </div>
+        </header>
+
+        <!-- Dropzone -->
+        <div class="resume-dropzone card" id="resume-dropzone">
+          <input type="file" id="resume-file-input" accept=".pdf,.txt,.docx,.md" style="display: none;">
+          <div class="dropzone-content">
+            <div class="dropzone-icon">📁</div>
+            <h3>Drag & Drop your Resume (PDF / TXT / DOCX)</h3>
+            <p>or <button type="button" class="btn-link" id="btn-browse-resume">Browse local file</button></p>
+            <span class="dropzone-note">Stored securely in local browser IndexedDB. Used for programmatic file upload.</span>
+          </div>
+          <div id="selected-file-info" class="selected-file-banner hidden">
+            <span class="file-icon">📄</span>
+            <span id="file-name-display" class="file-name">resume.pdf</span>
+            <span id="file-size-display" class="file-size">(0 KB)</span>
+            <button id="btn-parse-resume" class="btn btn-primary ml-auto">Run AI Extraction & Parse</button>
+          </div>
+        </div>
+
+        <div id="parse-loading" class="parse-loader card hidden">
+          <div class="spinner"></div>
+          <div>
+            <h4>Extracting Candidate Intelligence...</h4>
+            <p>Analyzing education, experience, roll number, contact details, and compliance data.</p>
+          </div>
+        </div>
+
+        <!-- The "Final Run" Verification Screen -->
+        <div id="final-run-container" class="final-run-section card hidden">
+          <div class="final-run-header">
+            <div>
+              <span class="badge badge-amber">Step 2: Verification Run</span>
+              <h3>Review & Confirm Extracted Profile</h3>
+              <p>Verify every parsed field below before locking. You can edit any mistakes directly.</p>
+            </div>
+            <button id="btn-confirm-profile" class="btn btn-success">✅ Confirm & Lock Profile</button>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Full Legal Name</label>
+              <input type="text" id="prof-fullName" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>First Name</label>
+              <input type="text" id="prof-firstName" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Last Name</label>
+              <input type="text" id="prof-lastName" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Email Address</label>
+              <input type="email" id="prof-email" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="tel" id="prof-phone" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>Roll No / Student ID</label>
+              <input type="text" id="prof-rollNo" class="form-input" placeholder="e.g. 210001054">
+            </div>
+            <div class="form-group">
+              <label>City & State</label>
+              <input type="text" id="prof-city" class="form-input" placeholder="e.g. San Francisco, CA">
+            </div>
+            <div class="form-group">
+              <label>Country & Postal Code</label>
+              <input type="text" id="prof-country" class="form-input" placeholder="e.g. United States, 94105">
+            </div>
+            <div class="form-group">
+              <label>LinkedIn URL</label>
+              <input type="url" id="prof-linkedin" class="form-input">
+            </div>
+            <div class="form-group">
+              <label>GitHub URL</label>
+              <input type="url" id="prof-github" class="form-input">
+            </div>
+            <div class="form-group full-width">
+              <label>Portfolio / Personal Website</label>
+              <input type="url" id="prof-portfolio" class="form-input">
+            </div>
+            <div class="form-group full-width">
+              <label>Headline / Professional Title</label>
+              <input type="text" id="prof-headline" class="form-input">
+            </div>
+            <div class="form-group full-width">
+              <label>Skills (Comma-separated)</label>
+              <input type="text" id="prof-skills" class="form-input">
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 3: DEMOGRAPHICS & PERSONAL ANSWERS -->
+      <section id="tab-demographics" class="tab-pane">
+        <header class="pane-header">
+          <div>
+            <h2>Personal & Demographic Answers</h2>
+            <p class="pane-desc">Google Autofill does not answer these. TrackMe tracks disability status, visa sponsorship, veteran status, and pronouns to automatically answer EEOC & compliance questions.</p>
+          </div>
+          <button id="btn-save-demographics" class="btn btn-primary">Save Demographic Preferences</button>
+        </header>
+
+        <div class="demographics-grid">
+          <!-- Work Auth -->
+          <div class="demo-card card">
+            <h3>Work Authorization & Visa Sponsorship</h3>
+            <div class="form-group mt-3">
+              <label>Are you legally authorized to work in the country you are applying to?</label>
+              <select id="demo-legallyAuthorized" class="form-input">
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+            <div class="form-group mt-3">
+              <label>Will you now or in the future require visa sponsorship?</label>
+              <select id="demo-requireSponsorship" class="form-input">
+                <option value="No">No (e.g. Citizen, Permanent Resident)</option>
+                <option value="Yes">Yes (e.g. F-1 OPT, H-1B, TN, J-1)</option>
+              </select>
+            </div>
+            <div class="form-group mt-3">
+              <label>Sponsorship & Visa Explanation (if applicable)</label>
+              <input type="text" id="demo-sponsorshipDetails" class="form-input" placeholder="Currently on STEM OPT, will eventually need H1-B">
+            </div>
+          </div>
+
+          <!-- Disability & Veteran -->
+          <div class="demo-card card">
+            <h3>ADA Disability & Veteran Status</h3>
+            <div class="form-group mt-3">
+              <label>Do you have a physical or mental impairment/disability?</label>
+              <select id="demo-disabilityStatus" class="form-input">
+                <option value="No, I do not have a disability">No, I do not have a disability</option>
+                <option value="Yes, I have a disability">Yes, I have a disability</option>
+                <option value="I do not wish to answer">I do not wish to answer</option>
+              </select>
+            </div>
+            <div class="form-group mt-3">
+              <label>Veteran / Military Status</label>
+              <select id="demo-veteranStatus" class="form-input">
+                <option value="I am not a protected veteran">I am not a protected veteran</option>
+                <option value="I identify as one or more of the classifications of a protected veteran">I am a protected veteran</option>
+                <option value="I do not wish to answer">I do not wish to answer</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Diversity & EEOC -->
+          <div class="demo-card card">
+            <h3>Diversity & Equal Employment Opportunity (EEOC)</h3>
+            <div class="form-group mt-3">
+              <label>Gender Identity</label>
+              <select id="demo-gender" class="form-input">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Non-Binary">Non-Binary</option>
+                <option value="Prefer not to disclose">Prefer not to disclose</option>
+              </select>
+            </div>
+            <div class="form-group mt-3">
+              <label>Pronouns</label>
+              <select id="demo-pronouns" class="form-input">
+                <option value="He/Him">He / Him</option>
+                <option value="She/Her">She / Her</option>
+                <option value="They/Them">They / Them</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
+            </div>
+            <div class="form-group mt-3">
+              <label>Race / Ethnicity</label>
+              <select id="demo-raceEthnicity" class="form-input">
+                <option value="Asian">Asian</option>
+                <option value="White">White</option>
+                <option value="Hispanic or Latino">Hispanic or Latino</option>
+                <option value="Black or African American">Black or African American</option>
+                <option value="Two or More Races">Two or More Races</option>
+                <option value="Prefer not to disclose">Prefer not to disclose</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Logistics & Expectations -->
+          <div class="demo-card card">
+            <h3>Logistics & Compensation</h3>
+            <div class="form-group mt-3">
+              <label>Expected Annual Salary / Compensation</label>
+              <input type="text" id="demo-salaryExpectation" class="form-input" placeholder="e.g. $120,000 / year or Negotiable">
+            </div>
+            <div class="form-group mt-3">
+              <label>Notice Period / Earliest Start Date</label>
+              <input type="text" id="demo-noticePeriod" class="form-input" placeholder="e.g. Immediate / 2 Weeks">
+            </div>
+            <div class="form-group mt-3">
+              <label>Willingness to Relocate?</label>
+              <select id="demo-willingToRelocate" class="form-input">
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+                <option value="Remote only">Remote only</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: MEMORY BANK -->
+      <section id="tab-memory-bank" class="tab-pane">
+        <header class="pane-header">
+          <div>
+            <h2>Continuous Learning Memory Bank</h2>
+            <p class="pane-desc">Stores custom answers to recurring application questions (e.g., essays, behavioral answers, university info, or past answers learned on pages).</p>
+          </div>
+          <button id="btn-add-memory" class="btn btn-primary">+ Add New Memory Item</button>
+        </header>
+
+        <div class="memory-search-bar card">
+          <input type="text" id="memory-search-input" class="form-input" placeholder="Search saved questions and answers...">
+        </div>
+
+        <div id="memory-items-list" class="memory-grid">
+          <!-- Populated dynamically -->
+        </div>
+
+        <!-- Add Memory Modal -->
+        <div id="modal-memory-form" class="modal-backdrop hidden">
+          <div class="modal-card card">
+            <div class="modal-header">
+              <h3>Add Memory Bank Question & Answer</h3>
+              <button id="btn-close-modal-memory" class="icon-btn">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>Question or Field Prompt</label>
+                <input type="text" id="new-mem-question" class="form-input" placeholder="e.g. Why do you want to join our company?">
+              </div>
+              <div class="form-group mt-3">
+                <label>Category</label>
+                <select id="new-mem-category" class="form-input">
+                  <option value="Behavioral">Behavioral</option>
+                  <option value="Technical">Technical</option>
+                  <option value="Logistics">Logistics</option>
+                  <option value="General">General</option>
+                </select>
+              </div>
+              <div class="form-group mt-3">
+                <label>Your Personalized Answer</label>
+                <textarea id="new-mem-answer" class="form-input" rows="4" placeholder="Enter your prepared response..."></textarea>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button id="btn-save-new-memory" class="btn btn-primary">Save to Memory Bank</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 5: COVER LETTER AUDIT & SIMULATOR -->
+      <section id="tab-cover-letters" class="tab-pane">
+        <header class="pane-header">
+          <div>
+            <h2>Cover Letter Hub & Role-Fit Audit Simulator</h2>
+            <p class="pane-desc">Upload your cover letter. When applying, TrackMe verifies if your cover letter matches the company and role, identifying missing keywords and ATS fit.</p>
+          </div>
+          <button id="btn-run-fit-audit" class="btn btn-primary">Run ATS Fit Audit</button>
+        </header>
+
+        <div class="cl-grid">
+          <div class="card cl-editor-card">
+            <h3>Active Cover Letter Content</h3>
+            <textarea id="cl-active-text" class="form-input cl-textarea" placeholder="Paste or draft your cover letter here..."></textarea>
+            <div class="mt-3 flex-between">
+              <button id="btn-save-cl" class="btn btn-outline btn-sm">Save Cover Letter</button>
+              <span id="cl-save-status" class="subtext"></span>
+            </div>
+          </div>
+
+          <div class="card cl-job-input-card">
+            <h3>Target Job Opening (Test Simulator)</h3>
+            <div class="form-group">
+              <label>Target Company</label>
+              <input type="text" id="sim-company" class="form-input" placeholder="e.g. Stripe">
+            </div>
+            <div class="form-group mt-2">
+              <label>Target Role Title</label>
+              <input type="text" id="sim-role" class="form-input" placeholder="e.g. Senior Backend Engineer">
+            </div>
+            <div class="form-group mt-2">
+              <label>Job Description & Requirements</label>
+              <textarea id="sim-jd" class="form-input" rows="6" placeholder="Paste job requirements snippet here to test fit matching..."></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div id="cl-audit-results" class="card mt-4 hidden">
+          <div class="audit-summary-header">
+            <div class="audit-score-bubble" id="sim-score-circle">
+              <span class="score-number" id="sim-score-val">0%</span>
+              <span class="score-label">Fit Score</span>
+            </div>
+            <div>
+              <h3 id="sim-fit-verdict">Strong Alignment</h3>
+              <p id="sim-fit-subtext">Comparison against role requirements</p>
+            </div>
+          </div>
+
+          <div class="audit-details-grid mt-4">
+            <div class="audit-col">
+              <h4>Matching Strengths</h4>
+              <ul id="sim-strengths-list" class="audit-list"></ul>
+            </div>
+            <div class="audit-col">
+              <h4>Missing Keywords & Skills</h4>
+              <div id="sim-keywords-box" class="chips-container"></div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <h4>Recommendations</h4>
+            <ul id="sim-recommendations-list" class="audit-list"></ul>
+          </div>
+
+          <div class="mt-4" id="sim-tailored-box">
+            <h4>Tailored Opening Paragraph</h4>
+            <blockquote id="sim-tailored-text" class="quote-box"></blockquote>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="global-toast" class="toast hidden"></div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>

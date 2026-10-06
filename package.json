@@ -1,0 +1,22 @@
+{
+  "name": "track-me-extension",
+  "version": "1.0.0",
+  "description": "Professional Chrome Extension for personalized auto-filling job applications, multi-model LLM routing, resume file injection, and cover letter role-fit audits.",
+  "main": "background/service-worker.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"No test specified\" && exit 0"
+  },
+  "keywords": [
+    "chrome-extension",
+    "autofill",
+    "llm-router",
+    "gemini",
+    "groq",
+    "cerebras",
+    "resume-parser",
+    "job-application"
+  ],
+  "author": "Satty",
+  "license": "MIT"
+}

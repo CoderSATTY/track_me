@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Acme Cloud AI - Senior Full Stack Engineer Application</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      margin: 0;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #ffffff;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+    }
+    .header {
+      border-bottom: 2px solid #e2e8f0;
+      padding-bottom: 24px;
+      margin-bottom: 30px;
+    }
+    .company-name {
+      color: #6366f1;
+      font-weight: 700;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    h1.job-title {
+      margin: 6px 0 12px 0;
+      font-size: 26px;
+      color: #0f172a;
+    }
+    .job-description {
+      background: #f1f5f9;
+      padding: 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #475569;
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 28px 0 16px 0;
+      color: #0f172a;
+      border-bottom: 1px solid #f1f5f9;
+      padding-bottom: 8px;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 16px;
+    }
+    .form-group label {
+      font-weight: 600;
+      font-size: 13px;
+      margin-bottom: 6px;
+      color: #334155;
+    }
+    .form-group input, .form-group select, .form-group textarea {
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+    .file-dropzone {
+      border: 2px dashed #cbd5e1;
+      padding: 20px;
+      text-align: center;
+      border-radius: 8px;
+      background: #fafafa;
+    }
+    .submit-btn {
+      background: #6366f1;
+      color: #ffffff;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      width: 100%;
+      margin-top: 24px;
+    }
+    .submit-btn:hover {
+      background: #4f46e5;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="company-name">Acme Cloud AI</div>
+      <h1 class="job-title">Senior Full Stack Engineer</h1>
+      <div class="job-description">
+        <strong>About the Role:</strong> Acme Cloud AI is looking for a Senior Full Stack Engineer to lead our enterprise cloud platform.
+        You will design high-throughput APIs, architect distributed services, and build real-time reactive user interfaces with modern React, TypeScript, Python, and cloud infrastructure. Experience with distributed caching, Docker, and LLM orchestration is highly valued.
+      </div>
+    </div>
+
+    <form id="job-app-form">
+      <!-- Contact Info -->
+      <div class="section-title">Personal Information</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="first-name">First Name *</label>
+          <input type="text" id="first-name" name="first_name" required>
+        </div>
+        <div class="form-group">
+          <label for="last-name">Last Name *</label>
+          <input type="text" id="last-name" name="last_name" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="email">Email Address *</label>
+          <input type="email" id="email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label for="phone">Phone Number *</label>
+          <input type="tel" id="phone" name="phone" required>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="roll-no">Student ID / Roll Number</label>
+          <input type="text" id="roll-no" name="roll_no" placeholder="Roll No">
+        </div>
+        <div class="form-group">
+          <label for="city">City, State</label>
+          <input type="text" id="city" name="city">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="linkedin">LinkedIn Profile URL</label>
+          <input type="url" id="linkedin" name="linkedin">
+        </div>
+        <div class="form-group">
+          <label for="github">GitHub Profile URL</label>
+          <input type="url" id="github" name="github">
+        </div>
+      </div>
+
+      <!-- File Attachments -->
+      <div class="section-title">Resume & Documents</div>
+      <div class="form-group">
+        <label for="resume-file">Resume / CV (PDF or DOCX) *</label>
+        <div class="file-dropzone">
+          <input type="file" id="resume-file" name="resume" accept=".pdf,.docx,.txt" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="cover-letter-file">Cover Letter (Optional)</label>
+        <div class="file-dropzone">
+          <input type="file" id="cover-letter-file" name="cover_letter" accept=".pdf,.docx,.txt">
+        </div>
+      </div>
+
+      <!-- Compliance & Demographics -->
+      <div class="section-title">Equal Employment & Work Authorization</div>
+      <div class="form-group">
+        <label for="auth-status">Are you legally authorized to work in the target country? *</label>
+        <select id="auth-status" name="authorized" required>
+          <option value="">-- Please Select --</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="sponsorship-status">Will you now or in the future require employment visa sponsorship? *</label>
+        <select id="sponsorship-status" name="sponsorship" required>
+          <option value="">-- Please Select --</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="disability-status">Voluntary Self-Identification of Disability *</label>
+        <select id="disability-status" name="disability" required>
+          <option value="">-- Please Select --</option>
+          <option value="No, I do not have a disability">No, I do not have a disability</option>
+          <option value="Yes, I have a disability">Yes, I have a disability (or have a history/record of having one)</option>
+          <option value="I do not wish to answer">I do not wish to answer</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="veteran-status">Veteran Status *</label>
+        <select id="veteran-status" name="veteran" required>
+          <option value="">-- Please Select --</option>
+          <option value="I am not a protected veteran">I am not a protected veteran</option>
+          <option value="I identify as one or more of the classifications of a protected veteran">I identify as a protected veteran</option>
+          <option value="I do not wish to answer">I do not wish to answer</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="gender">Gender Identity</label>
+        <select id="gender" name="gender">
+          <option value="">-- Please Select --</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Non-Binary">Non-Binary</option>
+          <option value="Prefer not to disclose">Prefer not to disclose</option>
+        </select>
+      </div>
+
+      <!-- Additional Questions -->
+      <div class="section-title">Additional Questions</div>
+      <div class="form-group">
+        <label for="why-company">Why are you interested in joining Acme Cloud AI?</label>
+        <textarea id="why-company" name="why_acme" rows="4" placeholder="Tell us why you want to work here..."></textarea>
+      </div>
+
+      <div class="form-group">
+        <label for="salary">What are your compensation expectations?</label>
+        <input type="text" id="salary" name="salary_expectation" placeholder="e.g. $120,000 / year">
+      </div>
+
+      <button type="submit" class="submit-btn">Submit Application</button>
+    </form>
+  </div>
+</body>
+</html>

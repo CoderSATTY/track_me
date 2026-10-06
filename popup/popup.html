@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TrackMe Assistant</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand">
+        <div class="logo-icon">TM</div>
+        <div>
+          <h2>TrackMe</h2>
+          <span class="subtext">Application Autofill Assistant</span>
+        </div>
+      </div>
+      <button id="btn-open-settings" class="icon-btn" title="Open Full Dashboard">⚙️</button>
+    </header>
+
+    <!-- Profile Status -->
+    <section class="card profile-card">
+      <div class="profile-info">
+        <div class="avatar" id="avatar-initials">TM</div>
+        <div class="details">
+          <div class="name-row">
+            <span id="user-name" class="candidate-name">Loading...</span>
+            <span id="badge-verified" class="badge">Unverified</span>
+          </div>
+          <span id="user-headline" class="candidate-headline">Profile Active</span>
+        </div>
+      </div>
+
+      <div class="meta-row">
+        <div class="meta-item">
+          <span class="meta-label">Resume</span>
+          <span id="resume-status" class="meta-value">None</span>
+        </div>
+        <div class="meta-item">
+          <span class="meta-label">Active Model</span>
+          <span id="current-provider-name" class="meta-value">Gemini</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Provider Selection -->
+    <section class="provider-section">
+      <label for="select-active-provider" class="section-label">Active Inference Engine</label>
+      <select id="select-active-provider" class="form-select">
+        <option value="gemini">Google Gemini Flash (Primary)</option>
+        <option value="groq">Groq Llama 3.3 (Fast)</option>
+        <option value="cerebras">Cerebras Llama 3.3</option>
+        <option value="openrouter">OpenRouter Free Tier</option>
+        <option value="sambanova">SambaNova Meta-Llama</option>
+        <option value="together">Together AI</option>
+        <option value="cloudflare">Cloudflare Workers AI</option>
+      </select>
+    </section>
+
+    <!-- Main Actions -->
+    <section class="actions-section">
+      <button id="btn-autofill-page" class="btn btn-primary">
+        Auto-Fill Current Page
+      </button>
+
+      <div class="btn-group">
+        <button id="btn-attach-resume" class="btn btn-secondary">Attach Resume</button>
+        <button id="btn-audit-fit" class="btn btn-secondary">Audit Fit</button>
+      </div>
+    </section>
+
+    <!-- Direct API Key Editor in Popup -->
+    <section class="api-keys-toggle-section">
+      <button id="btn-toggle-keys" class="btn btn-text">
+        <span>🔑 Change / Update API Keys</span>
+        <span id="keys-toggle-arrow">▼</span>
+      </button>
+
+      <div id="quick-keys-panel" class="quick-keys-panel hidden">
+        <div class="key-field">
+          <label>Google Gemini API Key</label>
+          <input type="password" id="popup-key-gemini" class="form-input" placeholder="AIzaSy...">
+        </div>
+        <div class="key-field">
+          <label>Groq API Key</label>
+          <input type="password" id="popup-key-groq" class="form-input" placeholder="gsk_...">
+        </div>
+        <div class="key-field">
+          <label>Cerebras API Key</label>
+          <input type="password" id="popup-key-cerebras" class="form-input" placeholder="csk-...">
+        </div>
+        <div class="key-field">
+          <label>OpenRouter API Key</label>
+          <input type="password" id="popup-key-openrouter" class="form-input" placeholder="sk-or-v1-...">
+        </div>
+        <button id="btn-save-popup-keys" class="btn btn-primary btn-sm mt-2">Save Keys</button>
+      </div>
+    </section>
+
+    <!-- Status Toast -->
+    <div id="status-toast" class="status-toast hidden"></div>
+
+    <!-- Footer -->
+    <footer class="popup-footer">
+      <a href="#" id="link-dashboard">Open Full Dashboard (Resume & Q&A) →</a>
+    </footer>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

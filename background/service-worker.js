@@ -7,6 +7,13 @@ import { Storage } from '../lib/storage.js';
 import { LLMRouter } from '../lib/llm-router.js';
 import { ResumeParser } from '../lib/resume-parser.js';
 
+// Configure side panel to open on action icon click
+if (chrome.sidePanel && chrome.sidePanel.setPanelBehavior) {
+  chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch((err) => {
+    console.warn('[TrackMe] Side panel behavior set error:', err);
+  });
+}
+
 // Extension installed listener
 chrome.runtime.onInstalled.addListener(() => {
   console.log('[TrackMe] Extension initialized.');
@@ -21,7 +28,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: false, error: err.message || 'Internal error' });
     });
 
-  // Return true to indicate asynchronous response
   return true;
 });
 
@@ -30,8 +36,8 @@ async function handleMessage(message, sender) {
 
   switch (type) {
     case 'TEST_API_KEY': {
-      const { providerId, apiKey, extraConfig } = payload;
-      return await LLMRouter.testConnection(providerId, apiKey, extraConfig);
+      const { providerId, apiKey } = payload;
+      return await LLMRouter.testConnection(providerId, apiKey);
     }
 
     case 'GET_STATUS': {
@@ -51,19 +57,13 @@ async function handleMessage(message, sender) {
     }
 
     case 'PARSE_RESUME': {
-      const { resumeText, pdfBase64, fileName, mimeType, rawArrayBuffer } = payload;
+      const { resumeText, pdfBase64, fileName, mimeType } = payload;
       const { keys, activeProvider, fallbackProviders } = await Storage.getApiKeys();
-
-      // Store binary file in IndexedDB if provided
-      if (rawArrayBuffer) {
-        const blob = new Blob([new Uint8Array(rawArrayBuffer)], { type: mimeType || 'application/pdf' });
-        await Storage.saveResumeBinary(blob, fileName, mimeType);
-      }
 
       // Execute LLM extraction
       const parseResult = await ResumeParser.parse(resumeText, keys, activeProvider, fallbackProviders, pdfBase64);
 
-      // Save initial profile as unverified until the user does the "Final Run" review
+      // Save initial profile
       await Storage.saveProfile(parseResult.profile, false);
 
       return parseResult;
@@ -82,7 +82,6 @@ async function handleMessage(message, sender) {
     case 'GET_RESUME_BINARY': {
       const fileRecord = await Storage.getResumeBinary();
       if (!fileRecord) return null;
-      // Convert Blob to ArrayBuffer for message port transmission
       const arrayBuffer = await fileRecord.blob.arrayBuffer();
       return {
         fileName: fileRecord.fileName,
@@ -122,10 +121,9 @@ async function handleMessage(message, sender) {
 
 /**
  * Intelligent form auto-fill processor
- * Combines local deterministic regex with LLM reasoning for demographic & complex fields
  */
 async function processFormAutoFill(fields, jobMetadata) {
-  const { profile, verified } = await Storage.getProfile();
+  const { profile } = await Storage.getProfile();
   if (!profile) {
     throw new Error('Please set up your profile and upload your resume in the TrackMe Dashboard first.');
   }
@@ -136,7 +134,7 @@ async function processFormAutoFill(fields, jobMetadata) {
 
   // 1. FAST DETERMINISTIC PASS
   for (const field of fields) {
-    if (field.isFileInput) continue; // Handled separately
+    if (field.isFileInput) continue;
 
     const label = `${field.label} ${field.name} ${field.id} ${field.placeholder} ${field.ariaLabel}`.toLowerCase();
     let val = null;
@@ -149,24 +147,33 @@ async function processFormAutoFill(fields, jobMetadata) {
       val = profile.basic?.fullName;
     } else if (matchesPattern(label, ['email', 'e-mail'])) {
       val = profile.basic?.email;
-    } else if (matchesPattern(label, ['phone', 'mobile', 'cell', 'telephone'])) {
+    } else if (matchesPattern(label, ['phone', 'mobile', 'telephone', 'contact number'])) {
       val = profile.basic?.phone;
+    } else if (matchesPattern(label, ['roll no', 'roll number', 'student id', 'registration no'])) {
+      val = profile.basic?.rollNo;
     } else if (matchesPattern(label, ['linkedin'])) {
       val = profile.basic?.linkedin;
     } else if (matchesPattern(label, ['github'])) {
       val = profile.basic?.github;
-    } else if (matchesPattern(label, ['portfolio', 'website', 'personal site'])) {
-      val = profile.basic?.portfolio || profile.basic?.website;
-    } else if (matchesPattern(label, ['roll no', 'roll number', 'student id', 'enrollment no'])) {
-      val = profile.basic?.rollNo;
+    } else if (matchesPattern(label, ['portfolio', 'website', 'personal link'])) {
+      val = profile.basic?.portfolio;
     } else if (matchesPattern(label, ['city'])) {
       val = profile.basic?.location?.city;
-    } else if (matchesPattern(label, ['state', 'province', 'region'])) {
-      val = profile.basic?.location?.state;
-    } else if (matchesPattern(label, ['postal', 'zip', 'zipcode', 'pin code'])) {
-      val = profile.basic?.location?.postalCode;
     } else if (matchesPattern(label, ['country'])) {
       val = profile.basic?.location?.country;
+    } else if (matchesPattern(label, ['postal', 'zip', 'pin code'])) {
+      val = profile.basic?.location?.postalCode;
+    } else if (matchesPattern(label, ['address', 'street'])) {
+      val = profile.basic?.location?.fullAddress;
+    }
+
+    // Check memory bank for previously saved custom questions
+    if (!val) {
+      const memMatch = memoryBank.find(m =>
+        label.includes(m.question.toLowerCase().trim()) ||
+        m.question.toLowerCase().trim().includes(field.label.toLowerCase().trim())
+      );
+      if (memMatch) val = memMatch.answer;
     }
 
     if (val) {
@@ -176,38 +183,46 @@ async function processFormAutoFill(fields, jobMetadata) {
     }
   }
 
-  // 2. LLM SMART PASS (for demographics, work authorization, dropdowns, essay questions, memory bank items)
+  // 2. INTELLIGENT LLM PASS FOR UNRESOLVED OR DEMOGRAPHIC FIELDS
   if (unresolvedFields.length > 0) {
     const { keys, activeProvider, fallbackProviders } = await Storage.getApiKeys();
+    const hasKeys = Object.values(keys).some(k => k && k.trim().length > 0);
 
-    if (Object.values(keys).some(k => k && k.trim().length > 0)) {
-      const llmFillMap = await queryLLMForFields(unresolvedFields, profile, memoryBank, jobMetadata, keys, activeProvider, fallbackProviders);
-      Object.assign(fieldValues, llmFillMap);
+    if (hasKeys) {
+      const llmAnswers = await queryLLMForFields(
+        unresolvedFields,
+        profile,
+        memoryBank,
+        jobMetadata,
+        keys,
+        activeProvider,
+        fallbackProviders
+      );
+      Object.assign(fieldValues, llmAnswers);
     }
   }
 
   return {
     fillMap: fieldValues,
-    jobMetadata,
-    totalFilled: Object.keys(fieldValues).length
+    totalAttempted: Object.keys(fieldValues).length,
+    unresolvedCount: unresolvedFields.length
   };
 }
 
-function matchesPattern(text, keywords) {
-  return keywords.some(k => text.includes(k));
+function matchesPattern(text, patterns) {
+  return patterns.some(p => text.includes(p));
 }
 
 /**
  * Ask LLM to answer complex/demographic questions and match select options
  */
 async function queryLLMForFields(unresolvedFields, profile, memoryBank, jobMetadata, keys, activeProvider, fallbackOrder) {
-  // Compress fields to minimize token usage
   const fieldsPayload = unresolvedFields.map(f => ({
     id: f.trackmeId,
     label: f.label || f.name || f.id,
     questionContext: f.surroundingQuestion,
     type: f.type,
-    options: f.options.map(o => o.text),
+    options: f.options?.map(o => o.text) || [],
     required: f.required
   }));
 
@@ -334,7 +349,7 @@ Rules:
 3. Tailor specifically to ${jobMetadata?.company || 'the target company'} and ${jobMetadata?.title || 'the target role'}.
 4. Root the response strictly in the candidate's actual skills, experience, and background.
 5. Focus style: ${chosenAngle}
-6. Return ONLY the answer text to be placed directly into the form field. Do not include quotes, markdown formatting, or conversational filler like 'Here is your answer:'.`;
+6. Return ONLY the answer text to be placed directly into the form field. Do not include quotes, markdown formatting, or conversational filler.`;
 
   const userPrompt = `Candidate Profile:
 Name: ${profile?.basic?.fullName || ''}
@@ -367,7 +382,6 @@ Generate the new, refined, and alternative answer text now:`;
   }, keys, activeProvider, fallbackOrder);
 
   let newAnswer = result.text.trim();
-  // Strip enclosing quotes if model added them
   if ((newAnswer.startsWith('"') && newAnswer.endsWith('"')) || (newAnswer.startsWith("'") && newAnswer.endsWith("'"))) {
     newAnswer = newAnswer.slice(1, -1).trim();
   }
@@ -378,4 +392,3 @@ Generate the new, refined, and alternative answer text now:`;
     providerUsed: result.usedProvider
   };
 }
-

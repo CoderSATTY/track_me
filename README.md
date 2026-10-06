@@ -152,46 +152,5 @@
   **YES.** It strictly follows Manifest V3 guidelines, has zero remote code execution, uses declarative permissions, and stores all API keys and personal files **100% locally on your machine**.
 * **Zero Third-Party Telemetry**: Your data never leaves your browser except for direct, user-configured API requests sent to your chosen AI providers.
 
----
 
-## 💻 CLI Commands: Creating & Pushing to a Git Repository
-
-### Method A: Standard Git Push (Existing or New Remote)
-If you have created an empty repository on GitHub/GitLab:
-
-```bash
-cd /home/satty/Windows_D/Codes/track_me
-
-# Initialize git if you want this folder as an independent repo:
-git init -b main
-
-# Stage and commit all files:
-git add .
-git commit -m "feat: complete TrackMe Manifest V3 Chrome Extension"
-
-# Link to your remote repository:
-git remote add origin https://github.com/<YOUR_GITHUB_USERNAME>/<YOUR_REPO_NAME>.git
-
-# Push to main:
-git push -u origin main
-```
-
-### Method B: Directly Create a Remote Repository from CLI (via GitHub CLI `gh`)
-To create and push the repository entirely from your terminal without opening a browser:
-
-```bash
-# 1. Install GitHub CLI (Debian/Ubuntu):
-sudo apt install gh -y
-# (Or on Arch: sudo pacman -S github-cli)
-
-# 2. Authenticate once with GitHub:
-gh auth login
-
-# 3. Create the repo and push in a single command:
-cd /home/satty/Windows_D/Codes/track_me
-git init -b main
-git add .
-git commit -m "feat: complete TrackMe Manifest V3 Chrome Extension"
-gh repo create track_me --public --source=. --remote=origin --push
-```
 

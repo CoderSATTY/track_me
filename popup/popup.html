@@ -12,246 +12,22 @@
     <header class="header">
       <div class="brand">
         <h1 class="brand-title">TrackMe</h1>
-        <span class="brand-sub">Application Assistant</span>
+        <span class="brand-sub">AI Application Assistant</span>
       </div>
       <div class="header-actions">
         <button id="btn-popout-tab" class="btn-text" title="Open in dedicated browser tab">Full Tab</button>
-        <div id="badge-verified" class="badge">Unverified</div>
+        <div id="badge-status" class="badge">Ready</div>
       </div>
     </header>
 
-    <!-- Navigation Tabs (Clean 4-Tab Bar, Zero Emojis) -->
-    <nav class="nav-bar">
-      <button class="nav-btn active" data-tab="tab-fill">Fill</button>
-      <button class="nav-btn" data-tab="tab-profile">Profile</button>
-      <button class="nav-btn" data-tab="tab-personal">Personal Q&amp;A</button>
-      <button class="nav-btn" data-tab="tab-keys">API Keys</button>
-    </nav>
-
-    <!-- TAB 1: FILL APPLICATION & ACTIVE PAGE -->
-    <section id="tab-fill" class="tab-pane active">
-      <div class="card">
-        <div class="card-row">
-          <span class="card-label">Candidate</span>
-          <span id="stat-candidate-name" class="card-value">Not configured</span>
-        </div>
-        <div class="card-row">
-          <span class="card-label">Stored Resume</span>
-          <span id="stat-resume-file" class="card-value">None</span>
-        </div>
-        <div class="card-row">
-          <span class="card-label">Active Engine</span>
-          <select id="select-active-provider" class="select-sm">
-            <option value="gemini">Gemini</option>
-            <option value="groq">Groq</option>
-            <option value="cerebras">Cerebras</option>
-          </select>
-        </div>
+    <!-- STAGE 1: API KEYS SETUP -->
+    <section id="view-keys" class="view-stage hidden">
+      <div class="stage-header">
+        <h2 class="stage-title">Configure AI Keys</h2>
+        <p class="stage-desc">Provide an API key for Google Gemini, Groq, or Cerebras to power form intelligence.</p>
       </div>
 
-      <!-- Target Page Detection Box -->
-      <div class="card mt-2">
-        <div class="card-header">Target Page</div>
-        <div class="card-row">
-          <span class="card-label">Role</span>
-          <span id="page-target-role" class="card-value text-truncate">Detecting...</span>
-        </div>
-        <div class="card-row">
-          <span class="card-label">Company</span>
-          <span id="page-target-company" class="card-value text-truncate">Detecting...</span>
-        </div>
-        <div class="card-row">
-          <span class="card-label">Detected Fields</span>
-          <span id="page-field-count" class="card-value">0</span>
-        </div>
-      </div>
-
-      <!-- Main Action Stack -->
-      <div class="action-stack mt-3">
-        <button id="btn-autofill-page" class="btn btn-primary full-width">Fill Application</button>
-        <button id="btn-attach-resume" class="btn btn-secondary full-width mt-1">Attach Resume File</button>
-      </div>
-
-      <div class="notice-box mt-3">
-        Double-click any question or field on a form to refactor its answer in-place.
-      </div>
-    </section>
-
-    <!-- TAB 2: RESUME & CANDIDATE PROFILE -->
-    <section id="tab-profile" class="tab-pane">
-      <!-- Resume Upload Card -->
-      <div class="card">
-        <div class="card-header">Resume Intake</div>
-        <input type="file" id="resume-file-input" accept=".pdf,.txt,.md" style="display: none;">
-        <div class="dropzone" id="resume-dropzone">
-          <div class="dropzone-main">Choose file or drag &amp; drop</div>
-          <div class="dropzone-sub">PDF, TXT, MD</div>
-        </div>
-
-        <div id="resume-selected-bar" class="file-bar hidden mt-2">
-          <span id="resume-file-name" class="file-bar-text">resume.pdf</span>
-          <button id="btn-parse-resume" class="btn btn-sm btn-primary">Parse Profile</button>
-        </div>
-
-        <!-- Resume Text Box (Extracted or Pasted) -->
-        <div class="form-group mt-2">
-          <label class="form-label" for="resume-raw-text">Resume Text (Extracted / Direct Input)</label>
-          <textarea id="resume-raw-text" class="input-text textarea-sm" placeholder="Upload a file above or paste your resume text directly here..."></textarea>
-        </div>
-
-        <div id="parse-loading" class="loading-bar hidden mt-1">
-          Parsing resume with AI model...
-        </div>
-      </div>
-
-      <!-- Extracted Profile Fields -->
-      <div class="card mt-2">
-        <div class="card-header">Profile Details</div>
-        <div class="fields-grid">
-          <div class="form-group">
-            <label class="form-label" for="prof-fullName">Full Name</label>
-            <input type="text" id="prof-fullName" class="input-text">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="prof-rollNo">Roll No / Student ID</label>
-            <input type="text" id="prof-rollNo" class="input-text">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="prof-email">Email</label>
-            <input type="email" id="prof-email" class="input-text">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="prof-phone">Phone</label>
-            <input type="tel" id="prof-phone" class="input-text">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="prof-city">City, State</label>
-            <input type="text" id="prof-city" class="input-text">
-          </div>
-          <div class="form-group">
-            <label class="form-label" for="prof-country">Country</label>
-            <input type="text" id="prof-country" class="input-text">
-          </div>
-          <div class="form-group full-span">
-            <label class="form-label" for="prof-linkedin">LinkedIn URL</label>
-            <input type="url" id="prof-linkedin" class="input-text">
-          </div>
-          <div class="form-group full-span">
-            <label class="form-label" for="prof-github">GitHub URL</label>
-            <input type="url" id="prof-github" class="input-text">
-          </div>
-          <div class="form-group full-span">
-            <label class="form-label" for="prof-skills">Skills (Comma-separated)</label>
-            <input type="text" id="prof-skills" class="input-text">
-          </div>
-        </div>
-
-        <button id="btn-save-profile" class="btn btn-primary full-width mt-2">Save Profile Details</button>
-      </div>
-    </section>
-
-    <!-- TAB 3: PERSONAL Q&A & DEMOGRAPHICS -->
-    <section id="tab-personal" class="tab-pane">
-      <div class="card">
-        <div class="card-header">Work Authorization &amp; Compliance</div>
-
-        <div class="form-group mt-1">
-          <label class="form-label" for="demo-legallyAuthorized">Legally authorized to work in target country?</label>
-          <select id="demo-legallyAuthorized" class="input-select">
-            <option value="Yes">Yes</option>
-            <option value="No">No</option>
-          </select>
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-requireSponsorship">Will you require visa sponsorship now or in the future?</label>
-          <select id="demo-requireSponsorship" class="input-select">
-            <option value="No">No</option>
-            <option value="Yes">Yes</option>
-          </select>
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-sponsorshipDetails">Sponsorship / Visa Details</label>
-          <input type="text" id="demo-sponsorshipDetails" class="input-text" placeholder="e.g. Citizen / Permanent Resident / OPT">
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-disabilityStatus">Disability Status (ADA)</label>
-          <select id="demo-disabilityStatus" class="input-select">
-            <option value="No, I do not have a disability">No, I do not have a disability</option>
-            <option value="Yes, I have a disability">Yes, I have a disability</option>
-            <option value="I do not wish to answer">I do not wish to answer</option>
-          </select>
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-veteranStatus">Veteran Status</label>
-          <select id="demo-veteranStatus" class="input-select">
-            <option value="I am not a protected veteran">I am not a protected veteran</option>
-            <option value="I identify as a protected veteran">I identify as a protected veteran</option>
-            <option value="I do not wish to answer">I do not wish to answer</option>
-          </select>
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-gender">Gender Identity</label>
-          <select id="demo-gender" class="input-select">
-            <option value="Male">Male</option>
-            <option value="Female">Female</option>
-            <option value="Non-Binary">Non-Binary</option>
-            <option value="Prefer not to disclose">Prefer not to disclose</option>
-          </select>
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-pronouns">Pronouns</label>
-          <select id="demo-pronouns" class="input-select">
-            <option value="He/Him">He / Him</option>
-            <option value="She/Her">She / Her</option>
-            <option value="They/Them">They / Them</option>
-            <option value="Prefer not to say">Prefer not to say</option>
-          </select>
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-salaryExpectation">Expected Salary</label>
-          <input type="text" id="demo-salaryExpectation" class="input-text" placeholder="e.g. $100,000 / year or Negotiable">
-        </div>
-
-        <div class="form-group mt-2">
-          <label class="form-label" for="demo-noticePeriod">Notice Period</label>
-          <input type="text" id="demo-noticePeriod" class="input-text" placeholder="e.g. Immediate / 2 Weeks">
-        </div>
-
-        <button id="btn-save-demographics" class="btn btn-primary full-width mt-2">Save Compliance Details</button>
-      </div>
-
-      <!-- Custom Q&A / Memory Bank -->
-      <div class="card mt-2">
-        <div class="card-header">Custom Answers &amp; Memory Bank</div>
-        <input type="text" id="memory-search-input" class="input-text mt-1" placeholder="Search saved answers...">
-
-        <div id="memory-items-list" class="memory-list mt-2">
-          <!-- Dynamically populated memory rows -->
-        </div>
-
-        <div class="divider mt-2"></div>
-        <div class="form-group mt-2">
-          <label class="form-label" for="new-mem-question">Add Question</label>
-          <input type="text" id="new-mem-question" class="input-text" placeholder="e.g. Why do you want to join?">
-        </div>
-        <div class="form-group mt-1">
-          <label class="form-label" for="new-mem-answer">Your Answer</label>
-          <textarea id="new-mem-answer" class="input-text textarea-sm" placeholder="Your pre-written answer..."></textarea>
-        </div>
-        <button id="btn-save-new-memory" class="btn btn-secondary full-width mt-1">Add Answer</button>
-      </div>
-    </section>
-
-    <!-- TAB 4: API KEYS -->
-    <section id="tab-keys" class="tab-pane">
-      <div class="form-group">
+      <div class="form-group mt-2">
         <label class="form-label" for="primary-provider-select">Primary Engine</label>
         <select id="primary-provider-select" class="input-select">
           <option value="gemini">Google Gemini</option>
@@ -298,12 +74,120 @@
 
       <div class="btn-grid mt-3">
         <input type="file" id="upload-keys-file" accept=".env,.json,.txt" style="display: none;">
-        <button id="btn-upload-keys" class="btn btn-secondary">Import Keys</button>
-        <button id="btn-save-keys" class="btn btn-primary">Save Settings</button>
+        <button id="btn-upload-keys" class="btn btn-secondary">Import File</button>
+        <button id="btn-save-keys-stage" class="btn btn-primary">Save &amp; Continue</button>
+      </div>
+
+      <div id="btn-back-to-dash-keys" class="back-link-container hidden mt-2">
+        <button class="btn-link">Back to Dashboard</button>
       </div>
     </section>
 
-    <!-- Global Toast Notification -->
+    <!-- STAGE 2: RESUME UPLOAD & MEMORIZATION -->
+    <section id="view-resume" class="view-stage hidden">
+      <div class="stage-header">
+        <h2 class="stage-title">Upload Resume</h2>
+        <p class="stage-desc">The AI will extract and memorize your full candidate profile to answer application questions.</p>
+      </div>
+
+      <div class="card mt-2">
+        <input type="file" id="resume-file-input" accept=".pdf,.txt,.md" style="display: none;">
+        <div class="dropzone" id="resume-dropzone">
+          <div class="dropzone-main">Click to select resume or drag &amp; drop</div>
+          <div class="dropzone-sub">PDF, TXT, MD</div>
+        </div>
+
+        <div id="resume-selected-bar" class="file-bar hidden mt-2">
+          <span id="resume-file-name" class="file-bar-text">resume.pdf</span>
+        </div>
+
+        <div class="form-group mt-2">
+          <label class="form-label" for="resume-raw-text">Extracted Resume Text (Editable)</label>
+          <textarea id="resume-raw-text" class="input-text textarea-md" placeholder="Select a resume file above or paste your resume text here directly..."></textarea>
+        </div>
+
+        <div id="parse-loading" class="loading-bar hidden mt-2">
+          Reading and memorizing candidate state with AI...
+        </div>
+
+        <button id="btn-parse-resume" class="btn btn-primary full-width mt-2">Parse &amp; Memorize Resume</button>
+      </div>
+
+      <div id="btn-back-to-dash-resume" class="back-link-container hidden mt-2">
+        <button class="btn-link">Back to Dashboard</button>
+      </div>
+    </section>
+
+    <!-- STAGE 3: MAIN APPLICATION DASHBOARD (FINAL PAGE) -->
+    <section id="view-dashboard" class="view-stage hidden">
+      <!-- Candidate State Card -->
+      <div class="card">
+        <div class="card-header">Memorized Candidate State</div>
+        <div class="card-row">
+          <span class="card-label">Name</span>
+          <span id="dash-candidate-name" class="card-value">Candidate</span>
+        </div>
+        <div class="card-row">
+          <span class="card-label">Email</span>
+          <span id="dash-candidate-email" class="card-value text-truncate">-</span>
+        </div>
+        <div class="card-row">
+          <span class="card-label">Roll No / ID</span>
+          <span id="dash-candidate-roll" class="card-value">-</span>
+        </div>
+        <div class="card-row">
+          <span class="card-label">Active Engine</span>
+          <select id="select-active-provider" class="select-sm">
+            <option value="gemini">Google Gemini</option>
+            <option value="groq">Groq</option>
+            <option value="cerebras">Cerebras</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Target Form Detection Card -->
+      <div class="card mt-2">
+        <div class="card-header">Target Application Form</div>
+        <div class="card-row">
+          <span class="card-label">Form Title</span>
+          <span id="dash-target-title" class="card-value text-truncate">Detecting...</span>
+        </div>
+        <div class="card-row">
+          <span class="card-label">Questions Detected</span>
+          <span id="dash-target-count" class="card-value">0</span>
+        </div>
+      </div>
+
+      <!-- Main Action Stack -->
+      <div class="action-stack mt-3">
+        <button id="btn-autofill-page" class="btn btn-primary full-width btn-lg">Fill Application</button>
+        <div id="dash-fill-status" class="status-message mt-1">Ready to fill application with AI assistance.</div>
+      </div>
+
+      <!-- Quick Navigation Bar -->
+      <div class="nav-links-bar mt-3">
+        <button id="link-update-resume" class="nav-text-btn">Update Resume</button>
+        <span class="nav-sep">|</span>
+        <button id="link-update-keys" class="nav-text-btn">API Keys</button>
+        <span class="nav-sep">|</span>
+        <button id="link-view-state" class="nav-text-btn">View State</button>
+      </div>
+
+      <!-- Expandable State Inspector Modal / Drawer -->
+      <div id="state-inspector-card" class="card mt-2 hidden">
+        <div class="card-header flex-between">
+          <span>Candidate State JSON</span>
+          <button id="btn-close-state" class="btn-text">Close</button>
+        </div>
+        <pre id="state-json-display" class="code-box mt-1"></pre>
+      </div>
+
+      <div class="notice-box mt-3">
+        Double-click any answer field on the form to refactor its response in-place.
+      </div>
+    </section>
+
+    <!-- Global Toast -->
     <div id="status-toast" class="toast hidden"></div>
   </div>
 

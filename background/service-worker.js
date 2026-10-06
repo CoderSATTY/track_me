@@ -76,8 +76,11 @@ async function handleMessage(message, sender) {
       // Execute LLM extraction
       const parseResult = await ResumeParser.parse(resumeText, keys, activeProvider, fallbackProviders, pdfBase64);
 
-      // Save initial profile
-      await Storage.saveProfile(parseResult.profile, false);
+      // Attach extracted plain resume text to candidate state
+      parseResult.profile.resumeRawText = resumeText || '';
+
+      // Save parsed state variable into storage
+      await Storage.saveProfile(parseResult.profile, true);
 
       return parseResult;
     }
@@ -233,24 +236,34 @@ async function queryLLMForFields(unresolvedFields, profile, memoryBank, jobMetad
   const fieldsPayload = unresolvedFields.map(f => ({
     id: f.trackmeId,
     label: f.label || f.name || f.id,
-    questionContext: f.surroundingQuestion,
+    questionContext: f.surroundingQuestion || f.label,
     type: f.type,
-    options: f.options?.map(o => o.text) || [],
+    options: (f.options || []).map(o => typeof o === 'string' ? o : (o.text || o.value || String(o))),
     required: f.required
   }));
 
   const systemPrompt = `You are TrackMe, an automated job application filling assistant.
-Given candidate data and a list of form fields (with optional dropdown choices), generate the exact best value or chosen option for each field.
+Given candidate profile data, raw resume text, and a list of form fields/questions (with optional choices), generate the exact best value or chosen option for each field.
 Rules:
-1. For dropdown options, pick the text that EXACTLY matches one of the provided options.
+1. For dropdown/radio options, pick the string that EXACTLY matches one of the provided options.
 2. For work authorization / visa sponsorship: adhere strictly to the candidate's demographic settings.
 3. For demographic self-identification (disability, veteran, race, gender): use the candidate's declared preferences.
-4. Output STRICT JSON: an object mapping field "id" to the chosen value/text string.`;
+4. For short answer and long answer questions: generate a professional, accurate response using the candidate's real skills, projects, and experiences from their resume.
+5. Output STRICT JSON: an object mapping field "id" to the chosen value/text string.`;
 
   const userPrompt = `Candidate Profile:
-${JSON.stringify({ basic: profile.basic, demographics: profile.demographics, education: profile.education, skills: profile.skills, memoryBank })}
+${JSON.stringify({
+  basic: profile.basic,
+  demographics: profile.demographics,
+  education: profile.education,
+  skills: profile.skills,
+  experience: profile.experience,
+  projects: profile.projects,
+  resumeRawText: profile.resumeRawText || '',
+  memoryBank
+}, null, 2)}
 
-Target Job: ${jobMetadata.title} at ${jobMetadata.company}
+Target Job / Form: ${jobMetadata?.title || 'Job Application'} at ${jobMetadata?.company || 'Company'}
 
 Form Fields to fill:
 ${JSON.stringify(fieldsPayload, null, 2)}

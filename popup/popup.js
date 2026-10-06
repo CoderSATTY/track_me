@@ -1,7 +1,7 @@
 /**
  * TrackMe Controller
- * Handles application autofill, client-side resume extraction & parsing,
- * persistent tab state, compliance preferences, and API keys.
+ * Manages the 3-step progressive state machine:
+ * Stage 1: API Keys Setup -> Stage 2: Resume Memorization -> Stage 3: Main Dashboard
  */
 
 import { Storage } from '../lib/storage.js';
@@ -11,91 +11,73 @@ let activeCandidateProfile = null;
 let stagedResumeFile = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  setupTabs();
-  await restoreActiveTab();
-  await loadStatusAndKeys();
-  await loadProfile();
-  await loadDemographics();
-  await loadMemoryBank();
-  await inspectActivePage();
+  await initApp();
   setupEventListeners();
 });
 
-// --- NAVIGATION TABS WITH PERSISTENCE ---
-function setupTabs() {
-  const tabs = document.querySelectorAll('.nav-btn');
-  const panes = document.querySelectorAll('.tab-pane');
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', async () => {
-      tabs.forEach(t => t.classList.remove('active'));
-      panes.forEach(p => p.classList.remove('active'));
-
-      tab.classList.add('active');
-      const targetId = tab.getAttribute('data-tab');
-      const targetPane = document.getElementById(targetId);
-      if (targetPane) targetPane.classList.add('active');
-
-      // Persist active tab across browser tab switching
-      await Storage.set({ lastActiveTab: targetId });
-    });
-  });
-}
-
-async function restoreActiveTab() {
-  const data = await Storage.get(['lastActiveTab']);
-  const savedTab = data.lastActiveTab || 'tab-fill';
-
-  const tabBtn = document.querySelector(`.nav-btn[data-tab="${savedTab}"]`);
-  const tabPane = document.getElementById(savedTab);
-
-  if (tabBtn && tabPane) {
-    document.querySelectorAll('.nav-btn').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-    tabBtn.classList.add('active');
-    tabPane.classList.add('active');
-  }
-}
-
-// --- ACTIVE PAGE INSPECTION ---
-async function inspectActivePage() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab || !tab.id || tab.url?.startsWith('chrome://')) return;
-
-  chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_INFO' }, (res) => {
-    if (chrome.runtime.lastError || !res?.success) {
-      document.getElementById('page-target-role').innerText = 'Standard Page';
-      document.getElementById('page-target-company').innerText = tab.title?.substring(0, 25) || 'Web';
-      document.getElementById('page-field-count').innerText = '-';
-      return;
-    }
-
-    const { jobMetadata, fieldCount } = res.data;
-    document.getElementById('page-target-role').innerText = jobMetadata.title || 'Role';
-    document.getElementById('page-target-company').innerText = jobMetadata.company || 'Company';
-    document.getElementById('page-field-count').innerText = fieldCount;
-  });
-}
-
-// --- TAB 1 & 4: STATUS & KEYS ---
-async function loadStatusAndKeys() {
+// --- STATE MACHINE INITIALIZATION ---
+async function initApp() {
   const { keys, activeProvider } = await Storage.getApiKeys();
+  const { profile } = await Storage.getProfile();
+  activeCandidateProfile = profile;
 
-  const selectActive = document.getElementById('select-active-provider');
+  const hasAnyKey = Object.values(keys).some(k => k && k.trim().length > 0);
+  const hasProfile = !!(profile && (profile.basic?.fullName || profile.resumeRawText));
+
+  // Determine starting view based on user progression
+  if (!hasAnyKey) {
+    showView('view-keys');
+    document.getElementById('btn-back-to-dash-keys')?.classList.add('hidden');
+    setBadge('Setup');
+  } else if (!hasProfile) {
+    showView('view-resume');
+    document.getElementById('btn-back-to-dash-resume')?.classList.add('hidden');
+    setBadge('Resume');
+  } else {
+    showView('view-dashboard');
+    document.getElementById('btn-back-to-dash-keys')?.classList.remove('hidden');
+    document.getElementById('btn-back-to-dash-resume')?.classList.remove('hidden');
+    setBadge('Ready');
+    populateDashboard(profile, activeProvider);
+  }
+
+  // Load field values
+  loadKeyInputs(keys, activeProvider);
+  if (profile?.resumeRawText) {
+    const rawEl = document.getElementById('resume-raw-text');
+    if (rawEl && !rawEl.value) rawEl.value = profile.resumeRawText;
+  }
+
+  await inspectActivePage();
+}
+
+function showView(viewId) {
+  document.querySelectorAll('.view-stage').forEach(el => el.classList.add('hidden'));
+  const target = document.getElementById(viewId);
+  if (target) target.classList.remove('hidden');
+}
+
+function setBadge(text, isReady = false) {
+  const badge = document.getElementById('badge-status');
+  if (!badge) return;
+  badge.innerText = text;
+  badge.className = `badge ${isReady || text === 'Ready' ? 'ready' : ''}`;
+}
+
+// --- STAGE 1: API KEYS ---
+function loadKeyInputs(keys, activeProvider) {
   const selectPrimary = document.getElementById('primary-provider-select');
   const keyGemini = document.getElementById('key-gemini');
   const keyGroq = document.getElementById('key-groq');
   const keyCerebras = document.getElementById('key-cerebras');
 
-  if (selectActive) selectActive.value = activeProvider || 'gemini';
   if (selectPrimary) selectPrimary.value = activeProvider || 'gemini';
-
   if (keyGemini) keyGemini.value = keys.gemini || '';
   if (keyGroq) keyGroq.value = keys.groq || '';
   if (keyCerebras) keyCerebras.value = keys.cerebras || '';
 }
 
-async function saveKeySettings() {
+async function handleSaveKeysStage() {
   const primaryProvider = document.getElementById('primary-provider-select').value;
   const keys = {
     gemini: document.getElementById('key-gemini').value.trim(),
@@ -103,11 +85,27 @@ async function saveKeySettings() {
     cerebras: document.getElementById('key-cerebras').value.trim()
   };
 
-  const fallbackOrder = ['gemini', 'groq', 'cerebras'].filter(p => p !== primaryProvider);
+  const hasAnyKey = Object.values(keys).some(k => k.length > 0);
+  if (!hasAnyKey) {
+    showToast('Please provide at least one API key to proceed', true);
+    return;
+  }
 
+  const fallbackOrder = ['gemini', 'groq', 'cerebras'].filter(p => p !== primaryProvider);
   await Storage.saveApiKeys(keys, primaryProvider, fallbackOrder);
-  document.getElementById('select-active-provider').value = primaryProvider;
-  showToast('API key settings saved');
+
+  showToast('API keys saved');
+
+  // Advance to Stage 2 (Resume) if no profile, otherwise to Stage 3 (Dashboard)
+  const { profile } = await Storage.getProfile();
+  if (!profile || (!profile.basic?.fullName && !profile.resumeRawText)) {
+    showView('view-resume');
+    setBadge('Resume');
+  } else {
+    showView('view-dashboard');
+    setBadge('Ready');
+    populateDashboard(profile, primaryProvider);
+  }
 }
 
 function testSingleKey(providerId) {
@@ -177,7 +175,6 @@ function setupKeyUpload() {
       if (imported.groq) document.getElementById('key-groq').value = imported.groq;
       if (imported.cerebras) document.getElementById('key-cerebras').value = imported.cerebras;
 
-      await saveKeySettings();
       showToast('Imported keys from ' + file.name);
     } catch (err) {
       showToast('Failed to parse file: ' + err.message, true);
@@ -185,36 +182,7 @@ function setupKeyUpload() {
   });
 }
 
-// --- TAB 2: RESUME & CANDIDATE PROFILE ---
-async function loadProfile() {
-  const { profile, verified, resumeMeta } = await Storage.getProfile();
-  activeCandidateProfile = profile;
-
-  const candidateStat = document.getElementById('stat-candidate-name');
-  const resumeStat = document.getElementById('stat-resume-file');
-  const badge = document.getElementById('badge-verified');
-
-  if (profile?.basic?.fullName) {
-    candidateStat.innerText = profile.basic.fullName;
-    populateProfileInputs(profile);
-  }
-
-  if (resumeMeta) {
-    const sizeKb = Math.round(resumeMeta.size / 1024);
-    resumeStat.innerText = `${resumeMeta.fileName} (${sizeKb} KB)`;
-    document.getElementById('resume-file-name').innerText = resumeMeta.fileName;
-    document.getElementById('resume-selected-bar').classList.remove('hidden');
-  }
-
-  if (verified) {
-    badge.innerText = 'Verified';
-    badge.className = 'badge verified';
-  } else {
-    badge.innerText = 'Unverified';
-    badge.className = 'badge';
-  }
-}
-
+// --- STAGE 2: RESUME UPLOAD & MEMORIZATION ---
 function setupResumeDropzone() {
   const dropzone = document.getElementById('resume-dropzone');
   const fileInput = document.getElementById('resume-file-input');
@@ -246,19 +214,18 @@ function setupResumeDropzone() {
 }
 
 async function handleSelectedResume(file) {
-  stagedResumeFile = file;
-  document.getElementById('resume-file-name').innerText = file.name;
-  document.getElementById('resume-selected-bar').classList.remove('hidden');
-
-  // Immediately store binary file in IndexedDB
-  await Storage.saveResumeBinary(file, file.name, file.type);
-  document.getElementById('stat-resume-file').innerText = `${file.name} (${Math.round(file.size / 1024)} KB)`;
-
-  // Client-side text extraction
-  const rawTextArea = document.getElementById('resume-raw-text');
-  rawTextArea.placeholder = 'Extracting resume text...';
-
   try {
+    stagedResumeFile = file;
+    document.getElementById('resume-file-name').innerText = file.name;
+    document.getElementById('resume-selected-bar').classList.remove('hidden');
+
+    // Save binary into storage
+    await Storage.saveResumeBinary(file, file.name, file.type);
+
+    // Client-side text extraction
+    const rawTextArea = document.getElementById('resume-raw-text');
+    rawTextArea.placeholder = 'Extracting resume text...';
+
     let extracted = '';
     if (file.name.endsWith('.txt') || file.name.endsWith('.md')) {
       extracted = await file.text();
@@ -269,18 +236,18 @@ async function handleSelectedResume(file) {
 
     if (extracted && extracted.trim().length > 0) {
       rawTextArea.value = extracted;
-      showToast('Extracted text from ' + file.name + '. Click Parse Profile.');
+      showToast('Extracted text. Click Parse & Memorize Resume.');
     } else {
-      rawTextArea.placeholder = 'Text extraction empty. You can paste your resume text here.';
-      showToast('Loaded ' + file.name + '. Click Parse Profile.');
+      rawTextArea.placeholder = 'You can paste your resume text here.';
+      showToast('Loaded ' + file.name + '. Click Parse & Memorize Resume.');
     }
   } catch (err) {
-    console.warn('Text extraction warning:', err);
-    showToast('Loaded ' + file.name + '. Click Parse Profile.');
+    console.error('File extraction error:', err);
+    showToast('File load error: ' + err.message, true);
   }
 }
 
-async function triggerResumeParse() {
+async function handleParseResumeStage() {
   const rawText = document.getElementById('resume-raw-text').value.trim();
 
   if (!rawText && !stagedResumeFile) {
@@ -308,165 +275,78 @@ async function triggerResumeParse() {
         fileName,
         mimeType
       }
-    }, (res) => {
+    }, async (res) => {
       loader.classList.add('hidden');
       if (!res?.success) {
-        showToast('Parse error: ' + (res?.error || 'Failed'), true);
+        showToast('Parse error: ' + (res?.error || 'Failed to parse resume'), true);
         return;
       }
 
       const { profile, providerUsed } = res.data;
       activeCandidateProfile = profile;
-      populateProfileInputs(profile);
-      showToast(`Parsed via ${providerUsed.toUpperCase()}. Click Save Profile.`);
+
+      showToast(`Resume memorized via ${providerUsed.toUpperCase()}`);
+
+      // Enable back buttons and transition to Stage 3 Dashboard
+      document.getElementById('btn-back-to-dash-keys')?.classList.remove('hidden');
+      document.getElementById('btn-back-to-dash-resume')?.classList.remove('hidden');
+
+      const { activeProvider } = await Storage.getApiKeys();
+      populateDashboard(profile, activeProvider);
+      showView('view-dashboard');
+      setBadge('Ready');
     });
   } catch (err) {
     loader.classList.add('hidden');
-    showToast('File error: ' + err.message, true);
+    showToast('Error: ' + err.message, true);
   }
 }
 
-function populateProfileInputs(profile) {
-  const b = profile.basic || {};
-  document.getElementById('prof-fullName').value = b.fullName || '';
-  document.getElementById('prof-rollNo').value = b.rollNo || '';
-  document.getElementById('prof-email').value = b.email || '';
-  document.getElementById('prof-phone').value = b.phone || '';
-  document.getElementById('prof-city').value = b.location?.city || '';
-  document.getElementById('prof-country').value = b.location?.country || '';
-  document.getElementById('prof-linkedin').value = b.linkedin || '';
-  document.getElementById('prof-github').value = b.github || '';
-  document.getElementById('prof-skills').value = Array.isArray(profile.skills) ? profile.skills.join(', ') : (profile.skills || '');
+// --- STAGE 3: MAIN DASHBOARD ---
+function populateDashboard(profile, activeProvider) {
+  if (!profile) return;
+
+  const nameEl = document.getElementById('dash-candidate-name');
+  const emailEl = document.getElementById('dash-candidate-email');
+  const rollEl = document.getElementById('dash-candidate-roll');
+  const selectProvider = document.getElementById('select-active-provider');
+
+  if (nameEl) nameEl.innerText = profile.basic?.fullName || 'Candidate';
+  if (emailEl) emailEl.innerText = profile.basic?.email || '-';
+  if (rollEl) rollEl.innerText = profile.basic?.rollNo || profile.basic?.phone || '-';
+  if (selectProvider) selectProvider.value = activeProvider || 'gemini';
+
+  const jsonDisplay = document.getElementById('state-json-display');
+  if (jsonDisplay) jsonDisplay.innerText = JSON.stringify(profile, null, 2);
 }
 
-async function confirmAndSaveProfile() {
-  if (!activeCandidateProfile) activeCandidateProfile = { basic: {}, demographics: {} };
+async function inspectActivePage() {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.id || tab.url?.startsWith('chrome://')) return;
 
-  const fullName = document.getElementById('prof-fullName').value.trim();
-  const rollNo = document.getElementById('prof-rollNo').value.trim();
-  const email = document.getElementById('prof-email').value.trim();
-  const phone = document.getElementById('prof-phone').value.trim();
-  const city = document.getElementById('prof-city').value.trim();
-  const country = document.getElementById('prof-country').value.trim();
-  const linkedin = document.getElementById('prof-linkedin').value.trim();
-  const github = document.getElementById('prof-github').value.trim();
-  const skillsStr = document.getElementById('prof-skills').value.trim();
+  chrome.tabs.sendMessage(tab.id, { type: 'GET_PAGE_INFO' }, (res) => {
+    if (chrome.runtime.lastError || !res?.success) {
+      const isGForm = tab.url?.includes('docs.google.com/forms');
+      document.getElementById('dash-target-title').innerText = isGForm ? 'Google Form' : (tab.title?.substring(0, 30) || 'Web Form');
+      document.getElementById('dash-target-count').innerText = '-';
+      return;
+    }
 
-  activeCandidateProfile.basic = {
-    ...activeCandidateProfile.basic,
-    fullName,
-    firstName: fullName.split(' ')[0] || '',
-    lastName: fullName.split(' ').slice(1).join(' ') || '',
-    rollNo,
-    email,
-    phone,
-    location: { city, country },
-    linkedin,
-    github
-  };
-  activeCandidateProfile.skills = skillsStr.split(',').map(s => s.trim()).filter(Boolean);
-
-  await Storage.saveProfile(activeCandidateProfile, true);
-
-  document.getElementById('stat-candidate-name').innerText = fullName || 'Saved';
-  const badge = document.getElementById('badge-verified');
-  badge.innerText = 'Verified';
-  badge.className = 'badge verified';
-  showToast('Profile saved successfully');
-}
-
-// --- TAB 3: DEMOGRAPHICS & CUSTOM Q&A ---
-async function loadDemographics() {
-  const { profile } = await Storage.getProfile();
-  const demo = profile?.demographics || {};
-
-  document.getElementById('demo-legallyAuthorized').value = demo.legallyAuthorized || 'Yes';
-  document.getElementById('demo-requireSponsorship').value = demo.requireSponsorship || 'No';
-  document.getElementById('demo-sponsorshipDetails').value = demo.sponsorshipDetails || '';
-  document.getElementById('demo-disabilityStatus').value = demo.disabilityStatus || 'No, I do not have a disability';
-  document.getElementById('demo-veteranStatus').value = demo.veteranStatus || 'I am not a protected veteran';
-  document.getElementById('demo-gender').value = demo.gender || 'Prefer not to disclose';
-  document.getElementById('demo-pronouns').value = demo.pronouns || 'Prefer not to say';
-  document.getElementById('demo-salaryExpectation').value = demo.salaryExpectation || '';
-  document.getElementById('demo-noticePeriod').value = demo.noticePeriod || '';
-}
-
-async function saveDemographics() {
-  if (!activeCandidateProfile) activeCandidateProfile = { basic: {}, demographics: {} };
-
-  activeCandidateProfile.demographics = {
-    legallyAuthorized: document.getElementById('demo-legallyAuthorized').value,
-    requireSponsorship: document.getElementById('demo-requireSponsorship').value,
-    sponsorshipDetails: document.getElementById('demo-sponsorshipDetails').value.trim(),
-    disabilityStatus: document.getElementById('demo-disabilityStatus').value,
-    veteranStatus: document.getElementById('demo-veteranStatus').value,
-    gender: document.getElementById('demo-gender').value,
-    pronouns: document.getElementById('demo-pronouns').value,
-    salaryExpectation: document.getElementById('demo-salaryExpectation').value.trim(),
-    noticePeriod: document.getElementById('demo-noticePeriod').value.trim()
-  };
-
-  await Storage.saveProfile(activeCandidateProfile, true);
-  showToast('Compliance preferences saved');
-}
-
-async function loadMemoryBank() {
-  const items = await Storage.getMemoryBank();
-  renderMemoryItems(items);
-}
-
-function renderMemoryItems(items) {
-  const container = document.getElementById('memory-items-list');
-  if (items.length === 0) {
-    container.innerHTML = `<div style="color: #71717a; padding: 10px; font-size: 11px; text-align: center;">No custom answers saved yet.</div>`;
-    return;
-  }
-
-  container.innerHTML = items.map(item => `
-    <div class="memory-row">
-      <div>
-        <div class="memory-q">${escapeHtml(item.question)}</div>
-        <div class="memory-a">${escapeHtml(item.answer)}</div>
-      </div>
-      <button class="btn-del" data-id="${item.id}">Delete</button>
-    </div>
-  `).join('');
-
-  container.querySelectorAll('.btn-del').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      const id = btn.getAttribute('data-id');
-      const all = await Storage.getMemoryBank();
-      const updated = all.filter(m => m.id !== id);
-      await Storage.saveMemoryBank(updated);
-      await loadMemoryBank();
-      showToast('Answer removed');
-    });
-  });
-}
-
-function setupMemorySearch() {
-  const input = document.getElementById('memory-search-input');
-  input.addEventListener('input', async () => {
-    const q = input.value.toLowerCase().trim();
-    const all = await Storage.getMemoryBank();
-    const filtered = all.filter(m => m.question.toLowerCase().includes(q) || m.answer.toLowerCase().includes(q));
-    renderMemoryItems(filtered);
+    const { jobMetadata, fieldCount } = res.data;
+    document.getElementById('dash-target-title').innerText = jobMetadata?.title || 'Application Form';
+    document.getElementById('dash-target-count').innerText = fieldCount;
   });
 }
 
 // --- EVENT LISTENERS ---
 function setupEventListeners() {
-  // Engine Selector
-  document.getElementById('select-active-provider').addEventListener('change', async (e) => {
-    const val = e.target.value;
-    const current = await Storage.getApiKeys();
-    await Storage.saveApiKeys(current.keys, val, current.fallbackProviders);
-    document.getElementById('primary-provider-select').value = val;
-    showToast('Active engine set to ' + val.toUpperCase());
+  // Popout full browser tab
+  document.getElementById('btn-popout-tab')?.addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') });
   });
 
-  // Keys Tab
-  document.getElementById('btn-save-keys').addEventListener('click', saveKeySettings);
+  // Stage 1: Keys
+  document.getElementById('btn-save-keys-stage')?.addEventListener('click', handleSaveKeysStage);
   setupKeyUpload();
   document.querySelectorAll('.btn-test-key').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -475,79 +355,76 @@ function setupEventListeners() {
     });
   });
 
-  // Resume Tab
+  // Stage 2: Resume
   setupResumeDropzone();
-  document.getElementById('btn-parse-resume').addEventListener('click', triggerResumeParse);
-  document.getElementById('btn-save-profile').addEventListener('click', confirmAndSaveProfile);
+  document.getElementById('btn-parse-resume')?.addEventListener('click', handleParseResumeStage);
 
-  // Demographics Tab
-  document.getElementById('btn-save-demographics').addEventListener('click', saveDemographics);
-
-  // Memory Tab
-  setupMemorySearch();
-  document.getElementById('btn-save-new-memory').addEventListener('click', async () => {
-    const q = document.getElementById('new-mem-question').value.trim();
-    const a = document.getElementById('new-mem-answer').value.trim();
-    if (!q || !a) {
-      showToast('Question and answer required', true);
-      return;
-    }
-    await Storage.addMemoryBankEntry(q, a, 'General');
-    document.getElementById('new-mem-question').value = '';
-    document.getElementById('new-mem-answer').value = '';
-    await loadMemoryBank();
-    showToast('Custom answer added');
+  // Stage 3: Dashboard Actions
+  document.getElementById('select-active-provider')?.addEventListener('change', async (e) => {
+    const val = e.target.value;
+    const current = await Storage.getApiKeys();
+    await Storage.saveApiKeys(current.keys, val, current.fallbackProviders);
+    document.getElementById('primary-provider-select').value = val;
+    showToast('Active engine set to ' + val.toUpperCase());
   });
 
-  // Action Buttons (Direct Content Script Messaging)
-  document.getElementById('btn-autofill-page').addEventListener('click', async () => {
-    showToast('Scanning and filling application...');
+  // Fill Application Button
+  document.getElementById('btn-autofill-page')?.addEventListener('click', async () => {
+    const statusMsg = document.getElementById('dash-fill-status');
+    if (statusMsg) statusMsg.innerText = 'Scraping form questions and consulting AI model...';
+    showToast('Filling application with AI...');
+
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab?.id) {
       showToast('No active tab detected', true);
+      if (statusMsg) statusMsg.innerText = 'Error: No active tab found.';
       return;
     }
 
     chrome.tabs.sendMessage(tab.id, { type: 'FILL_ACTIVE_PAGE' }, (res) => {
       if (chrome.runtime.lastError || !res?.success) {
-        showToast('Fill error: ' + (res?.error || chrome.runtime.lastError?.message || 'Page not ready'), true);
+        const errText = res?.error || chrome.runtime.lastError?.message || 'Form not detected';
+        showToast('Fill error: ' + errText, true);
+        if (statusMsg) statusMsg.innerText = 'Fill error: ' + errText;
         return;
       }
-      const { filledCount, totalFields, fileAttached } = res.data;
-      showToast(`Filled ${filledCount} of ${totalFields} fields${fileAttached ? ' + attached resume' : ''}`);
+
+      const { filledCount, totalFields } = res.data;
+      const msg = `Successfully filled ${filledCount} of ${totalFields} fields!`;
+      if (statusMsg) statusMsg.innerText = msg;
+      showToast(msg);
     });
   });
 
-  document.getElementById('btn-attach-resume').addEventListener('click', async () => {
-    showToast('Attaching resume to application...');
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id) {
-      showToast('No active tab detected', true);
-      return;
-    }
+  // Quick Links
+  document.getElementById('link-update-resume')?.addEventListener('click', () => {
+    showView('view-resume');
+  });
 
-    chrome.tabs.sendMessage(tab.id, { type: 'ATTACH_ACTIVE_RESUME' }, (res) => {
-      if (chrome.runtime.lastError || !res?.success) {
-        showToast('Attach error: ' + (res?.error || chrome.runtime.lastError?.message || 'No file input found'), true);
-        return;
-      }
-      if (res?.data?.attached || res?.attached) {
-        showToast('Resume file attached successfully');
-      } else {
-        showToast('No resume file input found on this page', true);
-      }
+  document.getElementById('link-update-keys')?.addEventListener('click', () => {
+    showView('view-keys');
+  });
+
+  document.getElementById('link-view-state')?.addEventListener('click', () => {
+    const inspector = document.getElementById('state-inspector-card');
+    inspector?.classList.toggle('hidden');
+  });
+
+  document.getElementById('btn-close-state')?.addEventListener('click', () => {
+    document.getElementById('state-inspector-card')?.classList.add('hidden');
+  });
+
+  // Back to Dashboard Links
+  document.querySelectorAll('.back-link-container button').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const { profile } = await Storage.getProfile();
+      const { activeProvider } = await Storage.getApiKeys();
+      populateDashboard(profile, activeProvider);
+      showView('view-dashboard');
     });
   });
 
-  // Popout to permanent browser tab
-  const popoutBtn = document.getElementById('btn-popout-tab');
-  if (popoutBtn) {
-    popoutBtn.addEventListener('click', () => {
-      chrome.tabs.create({ url: chrome.runtime.getURL('popup/popup.html') });
-    });
-  }
-
-  // Dynamic Page Inspection across tab switches
+  // Dynamic tab inspection on switch
   if (chrome.tabs && chrome.tabs.onActivated) {
     chrome.tabs.onActivated.addListener(async () => {
       await inspectActivePage();
@@ -581,20 +458,10 @@ function fileToBase64(file) {
 
 function showToast(msg, isError = false) {
   const toast = document.getElementById('status-toast');
+  if (!toast) return;
   toast.innerText = msg;
   toast.className = `toast ${isError ? 'error' : ''}`;
   setTimeout(() => {
     toast.className = 'toast hidden';
   }, 3200);
-}
-
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str).replace(/[&<>"']/g, (m) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;'
-  }[m]));
 }

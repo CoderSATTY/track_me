@@ -1,28 +1,29 @@
 /**
  * TrackMe Content Script
- * Injected silently on web pages.
- * Only acts when triggered explicitly via the extension popup/sidepanel,
- * or when the user double-clicks a form field to refactor it in-place.
- * NO floating pills or intrusive UI elements are injected into pages.
+ * Injected silently into web pages.
+ * NO floating pills, tabs, or widgets are injected into web pages.
+ * Eradicates any legacy floating widgets if previously present.
+ * Provides high-precision field scraping and filling for Google Forms & ATS platforms.
  */
 
 (function () {
+  // Proactively eradicate any legacy floating widget if present from previous injections
+  function removeLegacyWidgets() {
+    const legacy = document.querySelectorAll('#trackme-widget-root, #trackme-pill, #trackme-panel, .trackme-widget-container, #trackme-modal-audit');
+    legacy.forEach(el => el.remove());
+  }
+
+  removeLegacyWidgets();
+
   if (window.__trackMeInjected) return;
   window.__trackMeInjected = true;
 
-  // Listen for extension commands
+  // Listen for extension commands from the side panel / popup
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     switch (message.type) {
       case 'FILL_ACTIVE_PAGE': {
         handleAutofill()
           .then((res) => sendResponse({ success: true, data: res }))
-          .catch((err) => sendResponse({ success: false, error: err.message }));
-        return true;
-      }
-
-      case 'ATTACH_ACTIVE_RESUME': {
-        handleResumeAttachment(false)
-          .then((attached) => sendResponse({ success: true, attached }))
           .catch((err) => sendResponse({ success: false, error: err.message }));
         return true;
       }
@@ -34,7 +35,6 @@
             success: true,
             data: {
               fieldCount: pageData.fields.length,
-              fileFieldsCount: pageData.fields.filter(f => f.isFileInput).length,
               jobMetadata: pageData.jobMetadata
             }
           });
@@ -81,101 +81,91 @@
           }
         }
 
-        // Auto attach resume if an empty file input exists
-        let fileAttached = false;
-        const resumeInput = document.querySelector('input[type="file"]');
-        if (resumeInput && (!resumeInput.files || resumeInput.files.length === 0)) {
-          fileAttached = await handleResumeAttachment(true);
-        }
-
         resolve({
           filledCount,
-          totalFields: pageData.fields.length,
-          fileAttached
+          totalFields: pageData.fields.length
         });
       });
     });
   }
 
-  // --- RESUME ATTACHMENT VIA DATATRANSFER ---
-  async function handleResumeAttachment(silent = false) {
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: 'GET_RESUME_BINARY' }, (res) => {
-        if (!res || !res.success || !res.data) {
-          resolve(false);
-          return;
-        }
-
-        const { fileName, mimeType, arrayBuffer } = res.data;
-        const blob = new Blob([new Uint8Array(arrayBuffer)], { type: mimeType });
-
-        const fileInputs = Array.from(document.querySelectorAll('input[type="file"]'));
-        if (fileInputs.length === 0) {
-          resolve(false);
-          return;
-        }
-
-        let targetInput = fileInputs.find(i => {
-          const ctx = `${i.name} ${i.id} ${getLabelForElement(i)}`.toLowerCase();
-          return ctx.includes('resume') || ctx.includes('cv');
-        }) || fileInputs[0];
-
-        try {
-          const file = new File([blob], fileName, { type: mimeType, lastModified: Date.now() });
-          const dt = new DataTransfer();
-          dt.items.add(file);
-          targetInput.files = dt.files;
-
-          targetInput.dispatchEvent(new Event('input', { bubbles: true }));
-          targetInput.dispatchEvent(new Event('change', { bubbles: true }));
-
-          markFilled(targetInput);
-          resolve(true);
-        } catch {
-          resolve(false);
-        }
-      });
-    });
-  }
-
-  // --- PAGE FORM ANALYSIS ---
+  // --- COMPREHENSIVE FORM SCRAPER (GOOGLE FORMS & ATS PLATFORMS) ---
   function analyzePage() {
     const fields = [];
-    const elements = document.querySelectorAll('input, select, textarea');
     let counter = 0;
 
-    elements.forEach(el => {
-      const type = (el.type || '').toLowerCase();
-      if (['password', 'hidden', 'submit', 'reset', 'button', 'image'].includes(type)) return;
+    // Detect if we are on Google Forms
+    const isGoogleForms = window.location.hostname.includes('docs.google.com') && window.location.pathname.includes('/forms/');
+
+    if (isGoogleForms) {
+      // Scrape Google Forms Question Containers
+      const questionBlocks = document.querySelectorAll('[role="listitem"], .geS5n, .Qr7Oae, .k3920b');
+
+      questionBlocks.forEach((block) => {
+        // Extract Question Title
+        const titleEl = block.querySelector('.M7eMe, [role="heading"], .HoXoMd, .F9Nuk, span.snByac');
+        const questionText = titleEl ? titleEl.innerText.trim() : '';
+        if (!questionText) return;
+
+        // Find input elements inside this question container
+        const inputEl = block.querySelector('input:not([type="hidden"]), textarea, div[role="checkbox"], div[role="radio"], div[role="listbox"]');
+        if (!inputEl) return;
+
+        const type = (inputEl.type || inputEl.getAttribute('role') || 'text').toLowerCase();
+        let trackmeId = inputEl.getAttribute('data-trackme-id');
+        if (!trackmeId) {
+          trackmeId = `tm_gform_${++counter}`;
+          inputEl.setAttribute('data-trackme-id', trackmeId);
+        }
+
+        // Collect choices if radio/checkbox/dropdown
+        const options = [];
+        block.querySelectorAll('[role="radio"], [role="checkbox"], [data-value]').forEach(opt => {
+          const optText = opt.getAttribute('data-value') || opt.innerText.trim();
+          if (optText) options.push(optText);
+        });
+
+        fields.push({
+          trackmeId,
+          label: questionText,
+          surroundingQuestion: questionText,
+          type,
+          options,
+          required: !!block.querySelector('.vVVJfd, [aria-required="true"], .M7eMe *')
+        });
+      });
+    }
+
+    // Generic Scanner (covers Greenhouse, Lever, Workday, Ashby, Taleo, etc.)
+    const standardInputs = document.querySelectorAll('input:not([type="hidden"]):not([type="password"]):not([type="submit"]):not([type="button"]):not([type="file"]), textarea, select, [role="checkbox"], [role="radio"]');
+
+    standardInputs.forEach((el) => {
+      if (el.getAttribute('data-trackme-id')) return; // Already processed
       if (el.style.display === 'none' || el.style.visibility === 'hidden') return;
 
+      const name = (el.name || '').toLowerCase();
+      const id = (el.id || '').toLowerCase();
+      if (name.includes('search') || id.includes('search') || name.includes('captcha') || id.includes('captcha')) return;
+
       const label = getLabelForElement(el);
-      const isFileInput = type === 'file';
+      const surroundingQuestion = getSurroundingQuestion(el);
+      const type = (el.type || el.getAttribute('role') || 'text').toLowerCase();
 
       let options = [];
       if (el.tagName.toLowerCase() === 'select') {
-        options = Array.from(el.options).map(o => ({ value: o.value, text: o.text.trim() }));
+        options = Array.from(el.options).map(o => o.text.trim()).filter(Boolean);
       }
 
-      let trackmeId = el.getAttribute('data-trackme-id');
-      if (!trackmeId) {
-        trackmeId = `tm_${++counter}_${el.name || el.id || 'field'}`;
-        el.setAttribute('data-trackme-id', trackmeId);
-      }
+      const trackmeId = `tm_${++counter}_${el.name || el.id || 'field'}`;
+      el.setAttribute('data-trackme-id', trackmeId);
 
       fields.push({
         trackmeId,
-        tagName: el.tagName.toLowerCase(),
+        label: label || surroundingQuestion || 'Form Field',
+        surroundingQuestion: surroundingQuestion || label || '',
         type,
-        name: el.name || '',
-        id: el.id || '',
-        label,
-        placeholder: el.placeholder || '',
-        ariaLabel: el.getAttribute('aria-label') || '',
-        surroundingQuestion: getSurroundingQuestion(el),
         options,
-        isFileInput,
-        required: el.required
+        required: el.required || el.getAttribute('aria-required') === 'true'
       });
     });
 
@@ -186,29 +176,31 @@
   }
 
   function getLabelForElement(el) {
-    // Google Forms support: [role="listitem"], .geS5n, .Qr7Oae, .M7eMe
-    const gContainer = el.closest('[role="listitem"], .geS5n, .Qr7Oae, .k3920b');
-    if (gContainer) {
-      const gTitle = gContainer.querySelector('.M7eMe, [role="heading"], .HoXoMd, .F9Nuk');
-      if (gTitle && gTitle.innerText.trim()) {
-        return gTitle.innerText.trim();
-      }
-    }
-
     if (el.id) {
       const l = document.querySelector(`label[for="${CSS.escape(el.id)}"]`);
       if (l) return l.innerText.trim();
     }
+
+    const ariaLabelledBy = el.getAttribute('aria-labelledby');
+    if (ariaLabelledBy) {
+      const parts = ariaLabelledBy.split(/\s+/).map(id => document.getElementById(id)?.innerText?.trim()).filter(Boolean);
+      if (parts.length > 0) return parts.join(' ');
+    }
+
+    if (el.getAttribute('aria-label')) {
+      return el.getAttribute('aria-label').trim();
+    }
+
     const parentLabel = el.closest('label');
     if (parentLabel) return parentLabel.innerText.trim();
-    if (el.getAttribute('aria-label')) return el.getAttribute('aria-label').trim();
+
     return el.placeholder || el.name || '';
   }
 
   function getSurroundingQuestion(el) {
-    const container = el.closest('[role="listitem"], .geS5n, .form-group, .field, .input-container, tr, div');
-    if (container) {
-      const heading = container.querySelector('.M7eMe, [role="heading"], h2, h3, h4, strong, legend');
+    const container = el.closest('[role="listitem"], .geS5n, .form-group, .field, .input-container, .question, tr, div');
+    if (container && container !== document.body) {
+      const heading = container.querySelector('.M7eMe, [role="heading"], h1, h2, h3, h4, h5, strong, legend');
       if (heading) return heading.innerText.trim();
     }
     return '';
@@ -216,7 +208,7 @@
 
   function extractJobMetadata() {
     let title = document.querySelector('h1, .job-title, [data-automation-id="jobTitle"], .freebirdFormviewHeaderTitle, .F9vfv')?.innerText?.trim() || '';
-    if (!title) title = document.title.split(/[-|–]/)[0]?.trim() || 'Application';
+    if (!title) title = document.title.split(/[-|–]/)[0]?.trim() || 'Application Form';
 
     let company = document.querySelector('.company-name, [data-automation-id="companyName"]')?.innerText?.trim() || '';
     if (!company) {
@@ -224,24 +216,18 @@
       company = parts.length >= 2 ? parts[parts.length - 2].toUpperCase() : 'Company';
     }
 
-    const desc = document.querySelector('.job-description, #job-description, .freebirdFormviewHeaderDescription, article')?.innerText?.trim() || '';
-
-    return { title, company, descriptionSnippet: desc.substring(0, 3000) };
+    return { title, company };
   }
 
+  // --- ELEMENT FILLER WITH REACT & CLOSURE SUPPORT ---
   function fillElement(el, value) {
     if (value === undefined || value === null) return false;
     const tagName = el.tagName.toLowerCase();
     const type = (el.type || '').toLowerCase();
     const role = (el.getAttribute('role') || '').toLowerCase();
 
-    // Google Forms role="radio" and role="checkbox"
-    if (role === 'radio') {
-      el.click();
-      el.dispatchEvent(new Event('click', { bubbles: true }));
-      markFilled(el);
-      return true;
-    } else if (role === 'checkbox') {
+    // Google Forms role="checkbox"
+    if (role === 'checkbox') {
       const isChecked = el.getAttribute('aria-checked') === 'true';
       const shouldCheck = ['true', 'yes', '1', true].includes(value);
       if (isChecked !== shouldCheck) {
@@ -252,6 +238,15 @@
       return true;
     }
 
+    // Google Forms role="radio"
+    if (role === 'radio') {
+      el.click();
+      el.dispatchEvent(new Event('click', { bubbles: true }));
+      markFilled(el);
+      return true;
+    }
+
+    // HTML Select dropdown
     if (tagName === 'select') {
       const options = Array.from(el.options);
       const target = String(value).toLowerCase().trim();
@@ -268,32 +263,39 @@
         return true;
       }
       return false;
-    } else if (type === 'checkbox') {
+    }
+
+    // HTML Checkbox
+    if (type === 'checkbox') {
       el.checked = ['true', 'yes', '1', true].includes(value);
       el.dispatchEvent(new Event('change', { bubbles: true }));
       markFilled(el);
       return true;
-    } else {
-      // Focus & Prototype setter for React + Google Forms
-      el.focus();
-      const proto = Object.getPrototypeOf(el);
-      const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
-      if (setter) {
-        setter.call(el, String(value));
-      } else {
-        el.value = String(value);
-      }
-      if (el._valueTracker) {
-        el._valueTracker.setValue(String(value));
-      }
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: ' ' }));
-      el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, key: ' ' }));
-      el.dispatchEvent(new Event('blur', { bubbles: true }));
-      markFilled(el);
-      return true;
     }
+
+    // Text inputs & Textareas (Google Forms .whsOnd / .KHxj8b & React synthetic inputs)
+    el.focus();
+    const proto = Object.getPrototypeOf(el);
+    const setter = Object.getOwnPropertyDescriptor(proto, 'value')?.set;
+    if (setter) {
+      setter.call(el, String(value));
+    } else {
+      el.value = String(value);
+    }
+
+    if (el._valueTracker) {
+      el._valueTracker.setValue(String(value));
+    }
+
+    // Dispatch full input event sequence
+    el.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true, cancelable: true }));
+    el.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key: ' ' }));
+    el.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, cancelable: true, key: ' ' }));
+    el.dispatchEvent(new Event('blur', { bubbles: true, cancelable: true }));
+
+    markFilled(el);
+    return true;
   }
 
   function markFilled(el) {
@@ -322,8 +324,7 @@
       target.__trackmeRegenCount = (target.__trackmeRegenCount || 0) + 1;
       const iteration = target.__trackmeRegenCount;
 
-      const label = getLabelForElement(target) || target.name || target.placeholder || 'Question';
-      const questionContext = getSurroundingQuestion(target);
+      const label = getLabelForElement(target) || getSurroundingQuestion(target) || 'Question';
       const currentAnswer = target.value || '';
       const jobMetadata = extractJobMetadata();
 
@@ -334,7 +335,7 @@
         type: 'REGENERATE_FIELD_ANSWER',
         payload: {
           fieldLabel: label,
-          questionContext,
+          questionContext: label,
           currentAnswer,
           jobMetadata,
           iteration
@@ -379,6 +380,5 @@
     }, 3000);
   }
 
-  // Initialize only silent double-click listener
   setupDoubleClickRefactoring();
 })();
